@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">KvgViewer</string>
+
+    <!-- Strings for setting animation render rate -->
+    <string name="show_speed_hint">Long-press on animation image to show speed selection.</string>
+    <string name="slow">Animate Slow</string>
+    <string name="normal">Animate Normal</string>
+    <string name="fast">Animate Fast</string>
+
+</resources>

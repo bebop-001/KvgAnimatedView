@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+
+    <!-- animate grid colors -->
+    <color name="rendered_char">#a00000ff</color>
+    <color name="rendered_char_bg">#800000ff</color>
+    <color name="grid_color">#800000ff</color>
+    <color name="pointer_color">#aff00000</color>
+
+</resources>
