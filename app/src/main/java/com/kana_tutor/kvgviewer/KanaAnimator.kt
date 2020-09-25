@@ -6,9 +6,12 @@ import android.os.Bundle
 import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
+import android.view.Gravity
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
+import com.google.android.material.snackbar.Snackbar
 
 // interface to the AnimatorView.
 class KanaAnimator : Activity() {
@@ -39,7 +42,7 @@ class KanaAnimator : Activity() {
         }
         // If user touches screen outside of the animate view, exit.
         findViewById<View>(R.id.animate_layout).setOnClickListener { v: View ->
-            Toast.makeText(v.context, "exit animator", Toast.LENGTH_SHORT).show()
+            Toast.makeText(v.context, "exit animator", LENGTH_SHORT).show()
             finish()
         }
 
@@ -66,11 +69,14 @@ class KanaAnimator : Activity() {
             // speed control first time in the session animation
             // is run.
             showSpeedToast = false
-            Toast.makeText(
+            val t = Toast.makeText(
                     applicationContext,
                     R.string.show_speed_hint,
-                    Toast.LENGTH_LONG)
-                    .show()
+                    LENGTH_SHORT)
+                    t.setGravity(
+                        Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+                    0,0)
+                    t.show()
         }
     }
 
