@@ -3,12 +3,10 @@ package com.kana_tutor.kvgviewer
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.kana_tutor.kvgviewer.AnimatorView.Companion.viewWidth
 
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
@@ -17,11 +15,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 {
     companion object {
         // used for calculating display independent values.
-        private const val charWidth = 100
-        private const val charHeight = 100
+        private var charWidth = 0f
+        private var charHeight = 0f
 
-        // used to translate from the 100x100 pix of the
-        // char as read in.
+        // used to scale char to view size.
         private val scaleMatrix = Matrix()
 
         private val charPathMeasure = PathMeasure()
@@ -70,9 +67,16 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         @JvmStatic fun setAnimateSpeed(speedIn: Int) {
             animateSteps = speed[speedIn]
         }
+        var viewWidth = 0f
+        var viewHeight = 0f
         // called from KanaAnimator to select our character.
         @JvmStatic fun setRenderCharacter(renderChar: String, context: Context) {
-            val kp = KvgToAndroidPaths(context, renderChar)
+            val kp  = KvgToAndroidPaths(context, renderChar)
+            // for normalize.
+            charWidth = kp.width
+            charHeight = kp.height
+            scaleMatrix.setScale(
+                viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
             strokePaths = kp.strokePaths
             charPath = kp.charPath
             startNewLine = true
@@ -94,10 +98,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         return dp
     }
 
-    val renderedCharPaint : Paint
-    val cursorPaint : Paint
-    val bgCharPaint : Paint
-    val gridPaint : Paint
+    private val renderedCharPaint : Paint
+    private val cursorPaint : Paint
+    private val bgCharPaint : Paint
+    private val gridPaint : Paint
     // one time initialization at start of first object.
     init{
         // Various paint objects used during render.
@@ -118,7 +122,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokeWidth = _dp(1.0f)
             style = Paint.Style.FILL_AND_STROKE
             maskFilter = setMaskFilter(
-                BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
+                    BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
             )
         }
         // used to paint a blured version of the character
@@ -139,16 +143,15 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokeWidth = _dp(3f)
             style = Paint.Style.STROKE
         }
-        // Scale paths from 100 pix up to width from dimensions.
-        val sHeight: Float = resources.getDimension(R.dimen.anim_view_height) / 100f
-        val sWidth: Float = resources.getDimension(R.dimen.anim_view_width) / 100f
-        scaleMatrix.setScale(sWidth, sHeight, 0f, 0f)
+        // Needed to scale width/height to char sizes passed in.
+        viewWidth = resources.getDimension(R.dimen.anim_view_height)
+        viewHeight = resources.getDimension(R.dimen.anim_view_width)
     }
     // render rate milliseconds. sets our frame rate.  This rate was chosen
     // because my oldest device (android 4.4) could handle it.
-    val renderRate = 75
+    private val renderRate = 75
     //distance each animationStepDistance
-    val animationStepDistance = _dp(3f)
+    private val animationStepDistance = _dp(3f)
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         var pause = false
@@ -161,6 +164,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         for (i in 0 until animateSteps) {
             if (strokePathCounter < strokePaths.size) {
                 if (startNewLine) {
+                    Log.d("draw", "stroke $strokePathCounter")
                     distance = 0f
                     pause = true
                     // measure the length of the current path.
@@ -190,22 +194,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     strokePathCounter += 1
                     startNewLine = true
                 }
-                // Animation happens here -- this restarts render if necessary
-                // and invalidate of the view is what triggers the render.
+                // Animation happens here -- invalidate restarts render if necessary.
                 // Using a calculated period measured from the start of the
                 // render gives a steady refresh rate.
-                CoroutineScope(Dispatchers.Main).launch {
-                    var sleepTime = renderRate - System.currentTimeMillis() + startTime
-                    if (pause)
-                        sleepTime += 300
-                    delay(sleepTime)
-                    invalidate()
-                }
-                // new line.  pause render.
-                if (pause) break
+                var sleepTime = renderRate - System.currentTimeMillis() + startTime
+                if (pause)
+                    sleepTime += 300
+                postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
             canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
+            Log.d("draw", "${pos[0]},${pos[1]}")
         }
     }
 }

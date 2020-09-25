@@ -4,87 +4,83 @@ import android.content.Context
 import android.graphics.Path
 import android.util.Log
 
-class BadArgsException(message:String)
+// our own personal exception.
+class SvgConvertException(message:String)
     : Exception (message) {
-    constructor(fname:String, op:String, found:Int, expected:Int) :
-            this(String.format("file:%s op:%s expected %d args found %d",
-                fname, op, found, expected))
     constructor(op:String, found:Int, expected:Int) :
             this(String.format("op:%s expected %d args found %d",
                 op, found, expected))
 }
+// to destructure more than 5 args.
 private operator fun FloatArray.component6() = this[5]
 
+// class for conversion of SVG path operators to Android Graphics 
+// path operators.
 private class SvgPath : Path() {
-    private var previousOp = ""
-    var xR  = 0f; var yR = 0f; var xM = 0f; var yM = 0f
+    // reflection control points.  Used for SVG s/S bezier shorthand.
+    var xR  = 0f; var yR = 0f
+    // Current absolute x/y point.  Used for conversion from
+    // relative to absolute coordinate system.
+    var absX = 0f; var absY = 0f
 
+    // error check.  Throw an exception unless the array passed in is the
+    // expected size.
     private fun FloatArray.check(op : String,  expected:Int) : FloatArray {
         if (this.size != expected)
-            throw BadArgsException(op, expected, this.size)
+            throw SvgConvertException(op, expected, this.size)
         return this
     }
-    fun apply(op : String, coords : FloatArray) {
+    // because of "s" svg shorthand bezier operator, it's easier
+    // to convert everything to absolute coordinate space.  To do
+    // that, add the last absolute x y value to the input array.
+    fun FloatArray.relToAbs(x:Float, y:Float) : FloatArray {
+        // odd index is x, even is y.
+        for (i in this.indices step 2) {
+            this[i] += x; this[i+1] += y
+        }
+        return this
+    }
+    // convert the SVG opp passed in and add it to the path.
+    fun convert(op : String, coords : FloatArray) {
+        Log.d("convert", "$op ${coords.map{it.toString()}}")
         when (op) {
             "l" -> {
-                val (x,y) = coords.check(op, 2)
-                super.rLineTo(x,y)
-                previousOp = op
+                convert("L", coords.relToAbs(absX, absY))
             }
             "L" -> {
                 val (x,y) = coords.check(op, 2)
                 super.lineTo(x,y)
-                previousOp = op
+                absX = x; absY = y
             }
             "m" -> {
-                val(x,y) = coords.check(op, 2)
-                super.rMoveTo(x,y)
-                previousOp = op
+                convert("M", coords.relToAbs(absX, absY))
             }
             "M" -> {
                 val(x,y) = coords.check(op, 2)
                 super.moveTo(x,y)
-                previousOp = op
+                absX = x; absY = y
             }
             "c" -> {
-                val (x0,y0,x1,y1,
-                    x2,y2) = coords.check(op, 6)
-                super.rCubicTo(x0,y0,x1,y1,x2,y2)
-                previousOp = op
-                xR = (2*x2) - x1
-                yR = (2*y2) - y1
-                xM = x2
-                yM = y2
+                convert("C", coords.relToAbs(absX, absY))
             }
             "C" -> {
                 val (x0,y0,x1,y1,
                     x2,y2) = coords.check(op, 6)
                 super.cubicTo(x0,y0,x1,y1,x2,y2)
-                previousOp = op
+                // calculate reflection in case next op is svg
+                // s/S shorthand bezier.
                 xR = (2*x2) - x1
                 yR = (2*y2) - y1
-                xM = x2
-                yM = y2
+                absX =  coords[coords.lastIndex - 1]; absY = coords[coords.lastIndex]
             }
             "s" -> {
-                if (previousOp != "c")
-                    throw BadArgsException(
-                        "attempt to call \"s\" after non- \"c\" operation")
-                val (x0,y0,x1,y1) = coords.check(op, 4)
-                super.rMoveTo(xM, yM)
-                super.rCubicTo(xR,yR,x0,y0,x1,y1)
-                previousOp = op
+                convert("S", coords.relToAbs(absX, absY))
             }
             "S" -> {
-                if (previousOp != "C")
-                    throw BadArgsException(
-                        "attempt to call \"s\" after non- \"c\" operation")
                 val (x0,y0,x1,y1) = coords.check(op, 4)
-                super.moveTo(xM, yM)
-                super.cubicTo(xR,yR,x0,y0,x1,y1)
-                previousOp = op
+                convert("C", floatArrayOf(xR,yR,x0,y0,x1,y1))
             }
-            else -> throw BadArgsException ("unrecognized operator: \"$op\"")
+            else -> throw SvgConvertException ("unrecognized operator: \"$op\"")
         }
     }
 }
@@ -108,7 +104,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
                 .map { it.groupValues[1].toFloat() }
                 .toList()
                 .toFloatArray()
-            svgPath.apply(op, coord)
+            svgPath.convert(op, coord)
         }
         return svgPath
     }
@@ -119,6 +115,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
         val reader = context.assets.open(fnameIn).bufferedReader()
         var lineNumber = 0
         var line = reader.readLine()
+        var strokeCounter = 1
         while (line != null) {
             lineNumber++
             if (!line.matches("^\\s*#.*".toRegex())) {
@@ -140,6 +137,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
                             .map { it.groupValues[0] }
                             .toList()
                         try {
+                            Log.d("convert", "Stroke ${strokeCounter++}")
                             paths.add(strokes.strokesToPath())
                         }
                         catch (e : Exception) {

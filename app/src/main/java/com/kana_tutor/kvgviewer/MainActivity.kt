@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -22,8 +23,9 @@ class MainActivity : AppCompatActivity() {
 
     fun animationOnClick(view: View) {
         val button = view as Button
+        val renderChar = renderChar_TXT.text.toString().toCharArray()[0]
         val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
-        startAnimator.putExtra("renderChar", button.text)
+        startAnimator.putExtra("renderChar", renderChar.toString())
         startActivity(startAnimator)
     }
 }
