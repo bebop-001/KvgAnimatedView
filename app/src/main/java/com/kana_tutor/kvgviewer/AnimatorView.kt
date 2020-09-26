@@ -8,7 +8,6 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.component1
 import androidx.core.graphics.component2
-import com.kana_tutor.kvgviewer.AnimatorView.Companion.viewWidth
 
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
@@ -93,7 +92,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             for (i in strokePaths.indices) {
                 strokePaths[i].transform(scaleMatrix)
             }
-            charPath.transform(scaleMatrix)
+            strokePaths.map{ charPath.addPath(it)}
         }
     }
     // convert pix/font point for display independence

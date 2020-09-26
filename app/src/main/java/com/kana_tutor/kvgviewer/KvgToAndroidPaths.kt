@@ -3,6 +3,7 @@ package com.kana_tutor.kvgviewer
 import android.content.Context
 import android.graphics.Path
 import android.util.Log
+import java.io.BufferedReader
 
 // our own personal exception.
 class SvgConvertException(message:String)
@@ -108,49 +109,61 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
         }
         return svgPath
     }
+    private fun readPathFile(reader:BufferedReader) : MutableList<String> {
+        var line = reader.readLine()
+        var svgInfo = mutableListOf<String>()
+        while (line != null) {
+            if (!line.matches("^\\s*#.*".toRegex()))
+                svgInfo.add(line)
+            line = reader.readLine()
+        }
+        return svgInfo
+    }
     init {
-        val paths = mutableListOf<Path>()
+        // each Path will represent a stroke.
+        val strokes = mutableListOf<Path>()
         val charsIn = renderChar.toCharArray()
         val fnameIn = String.format("paths/%05x.pat", charsIn[0].toInt())
         val reader = context.assets.open(fnameIn).bufferedReader()
-        var lineNumber = 0
-        var line = reader.readLine()
-        var strokeCounter = 1
-        while (line != null) {
-            lineNumber++
-            if (!line.matches("^\\s*#.*".toRegex())) {
-                val match = "^(\\S+)\\s+(.*)".toRegex().find(line)
-                if (match != null) {
-                    val (ch, strokesStr) = match.destructured
-                    if (width == 0f) {
-                        val m = "\\d+".toRegex().findAll(strokesStr).toList()
-                        if (m.size == 2) {
-                            width = m[0].value.toFloat()
-                            height = m[1].value.toFloat()
-                        }
-                        else throw java.lang.RuntimeException(
-                            "KvgToAndroidPaths:Failed to find width/height on first line.")
-                    }
-                    else {
-                        val strokes = "([a-zA-Z][^a-zA-Z]+)".toRegex()
-                            .findAll(strokesStr)
-                            .map { it.groupValues[0] }
-                            .toList()
-                        try {
-                            Log.d("convert", "Stroke ${strokeCounter++}")
-                            paths.add(strokes.strokesToPath())
-                        }
-                        catch (e : Exception) {
-                            throw RuntimeException(
-                                "File $fnameIn, line $lineNumber, path exception:${e}")
-                        }
-                    }
+        val svgInfo = readPathFile(reader)
+        var line = svgInfo.removeAt(0)
+        while (svgInfo.isNotEmpty()) {
+            val match = "^(\\S+)\\s+(.*)".toRegex().find(line)
+            if (match != null) {
+                // chIn nly there for path files and not used groupValues[1];
+                line = match.groupValues[2]
+            }
+            if (KvgToAndroidPaths@this.width == 0f) {
+                val m = "\\d+".toRegex().findAll(line)
+                    .map{it.value.toFloat()}.toList()
+                if (m != null && m.size == 2) {
+                    KvgToAndroidPaths@this.width = m[0]
+                    KvgToAndroidPaths@this.height = m[1]
+                }
+                else throw SvgConvertException(
+                    "failed to find width/height at first non-comment line."
+                )
+            }
+            else {
+                val pathOps = "([a-zA-Z][^a-zA-Z]+)".toRegex()
+                    .findAll(line)
+                    .map { it.groupValues[0] }
+                    .toList()
+                if (pathOps.isEmpty()) {
+                    throw throw SvgConvertException(
+                        "No SVG path operations found in \"$line\"")
+                }
+                try {
+                    strokes.add(pathOps.strokesToPath())
+                }
+                catch (e : Exception) {
+                    throw RuntimeException(
+                        "File $fnameIn, path exception for \"$line\"\n:${e}")
                 }
             }
-            line = reader.readLine()
+            line = svgInfo.removeAt(0)
         }
-        Log.d("kvgToAndroidPath", "found ${paths.size}")
-        strokePaths = paths.toTypedArray()
-        strokePaths.forEach { charPath.addPath(it) }
+        Log.d("kvgToAndroidPath", "found ${strokes.size}")
+        strokePaths = strokes.toTypedArray()
     }
 }
