@@ -6,6 +6,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.component1
+import androidx.core.graphics.component2
 import com.kana_tutor.kvgviewer.AnimatorView.Companion.viewWidth
 
 // a custom path for rendering an animated view of a
@@ -64,13 +66,14 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // More steps per frame == faster animation.
         private val speed = intArrayOf(3, 6, 9)
         private var animateSteps = 0
-        @JvmStatic fun setAnimateSpeed(speedIn: Int) {
+        fun setAnimateSpeed(speedIn: Int) {
             animateSteps = speed[speedIn]
         }
         var viewWidth = 0f
         var viewHeight = 0f
+        var endPoints = mutableListOf<PointF>()
         // called from KanaAnimator to select our character.
-        @JvmStatic fun setRenderCharacter(renderChar: String, context: Context) {
+        fun setRenderCharacter(renderChar: String, context: Context) {
             val kp  = KvgToAndroidPaths(context, renderChar)
             // for normalize.
             charWidth = kp.width
@@ -78,6 +81,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             scaleMatrix.setScale(
                 viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
             strokePaths = kp.strokePaths
+            endPoints.clear()
+            for (i in 0 .. strokePaths.lastIndex)
+                endPoints.add(PointF())
             charPath = kp.charPath
             startNewLine = true
             strokePathCounter = 0
@@ -102,6 +108,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val cursorPaint : Paint
     private val bgCharPaint : Paint
     private val gridPaint : Paint
+    private val textPaint : Paint
     // one time initialization at start of first object.
     init{
         // Various paint objects used during render.
@@ -122,8 +129,14 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokeWidth = _dp(1.0f)
             style = Paint.Style.FILL_AND_STROKE
             maskFilter = setMaskFilter(
-                    BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
+                BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
             )
+        }
+        textPaint = Paint()
+        with(textPaint) {
+            color = ContextCompat.getColor(context, R.color.text_color)
+            setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
+            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         }
         // used to paint a blured version of the character
         // so user can see what's being painted.
@@ -187,6 +200,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     else {
                         renderedCharPath.lineTo(pos[0], pos[1])
                         canvas.drawCircle(pos[0], pos[1], _dp(3f), cursorPaint)
+                        // Catch end points as we go.
+                        endPoints[strokePathCounter].set(pos[0], pos[1])
                     }
                 }
                 else {
@@ -204,6 +219,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
             canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
+            if (strokePathCounter == strokePaths.size) {
+                for (i in endPoints.indices) {
+                    val (x, y) = endPoints[i]
+                    canvas.drawText((i + 1).toString(), x, y, textPaint);
+                }
+            }
             Log.d("draw", "${pos[0]},${pos[1]}")
         }
     }
