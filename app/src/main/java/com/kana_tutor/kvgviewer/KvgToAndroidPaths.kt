@@ -127,8 +127,10 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
         val reader = context.assets.open(fnameIn).bufferedReader()
         val svgInfo = readPathFile(reader)
         var line = svgInfo.removeAt(0)
+        var match : MatchResult?
+        var mmm : Sequence<MatchResult>
         while (svgInfo.isNotEmpty()) {
-            val match = "^(\\S+)\\s+(.*)".toRegex().find(line)
+            match = "^(\\S+)\\s+(.*)".toRegex().find(line)
             if (match != null) {
                 // chIn nly there for path files and not used groupValues[1];
                 line = match.groupValues[2]
@@ -144,11 +146,10 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
                     "failed to find width/height at first non-comment line."
                 )
             }
-            else {
-                val pathOps = "([a-zA-Z][^a-zA-Z]+)".toRegex()
+            else if ("([mltsc][^mltsc]+)".toRegex(RegexOption.IGNORE_CASE)
                     .findAll(line)
-                    .map { it.groupValues[0] }
-                    .toList()
+                    .also{mmm = it} != null) {
+                val pathOps = mmm.map{it.value}.toList()
                 if (pathOps.isEmpty()) {
                     throw throw SvgConvertException(
                         "No SVG path operations found in \"$line\"")
@@ -160,6 +161,10 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
                     throw RuntimeException(
                         "File $fnameIn, path exception for \"$line\"\n:${e}")
                 }
+            }
+            else {
+                throw RuntimeException(
+                    "File $fnameIn, line \"$line\": no SVG Path operator at start of line.")
             }
             line = svgInfo.removeAt(0)
         }

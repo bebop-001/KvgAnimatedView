@@ -217,12 +217,15 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
-            canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
             if (strokePathCounter == strokePaths.size) {
                 for (i in endPoints.indices) {
                     val (x, y) = endPoints[i]
                     canvas.drawText((i + 1).toString(), x, y, textPaint);
                 }
+                canvas.drawCircle(pos[0], pos[1], _dp(3f), textPaint)
+            }
+            else {
+                canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
             }
             Log.d("draw", "${pos[0]},${pos[1]}")
         }
