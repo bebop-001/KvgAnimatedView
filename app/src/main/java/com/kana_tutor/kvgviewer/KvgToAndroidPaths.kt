@@ -6,7 +6,10 @@ import android.content.Context
 import android.graphics.Matrix
 import android.graphics.Path
 import android.util.Log
+import android.widget.Toast
 import java.io.BufferedReader
+
+import kotlin.text.RegexOption.IGNORE_CASE
 
 // our own personal exception.
 class SvgConvertException(message:String)
@@ -99,7 +102,7 @@ data class PositionedTextInfo(val text:String, val tMatrix: Matrix) {
 }
 // these read*File routines are separated so we can debug outside of Android.
 // path files are pre-parsed SVG files.
-private fun readPathFile(reader:BufferedReader) : MutableList<String> {
+fun readPathFile(reader:BufferedReader) : MutableList<String> {
     var line = reader.readLine()
     val svgInfo = mutableListOf<String>()
     while (line != null) {
@@ -109,22 +112,42 @@ private fun readPathFile(reader:BufferedReader) : MutableList<String> {
     }
     return svgInfo
 }
+val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
+val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
+val textRegex = "^\\s*<text.*matrix\\(([^)]+)\\)[^>]+>([^<]+)".toRegex()
 // Parse the svg file.  We pull out path and text info here.
-private fun readSvgFile(reader: BufferedReader) : MutableList<String> {
+fun readSvgFile(reader: BufferedReader) : MutableList<String> {
+    var lineCounter = 0
     var line = reader.readLine()
     val svgInfo = mutableListOf<String>()
-    while (line != null) {
-        if (!line.matches("^\\s*#.*".toRegex()))
-            svgInfo.add(line)
-        line = reader.readLine()
+    var matchResult : MatchResult?
+    nextLine@while (reader.readLine().also{line = it} != null) {
+        lineCounter++
+        if (line.matches("^\\s*#.*".toRegex()))
+            continue@nextLine
+        if (pathRegex.find(line).also {  matchResult = it } != null) {
+            svgInfo.add(matchResult!!.groupValues[1])
+        }
+        else if (widthHeightRegex.find(line).also {  matchResult = it } != null) {
+            val (width, height) = matchResult!!.destructured
+            svgInfo.add("$width $height")
+        }
+        else if (textRegex.find(line).also {  matchResult = it } != null) {
+            // text is <text, a translation matrix, then text.
+            // I'm rerpresenting that with 'x$matrix:$text where matrix is the
+            // comma separated values from the matrix
+            val(m,text) = matchResult!!.destructured
+            val matrix = m.split("\\s+".toRegex()).joinToString(",")
+            svgInfo.add("x$matrix:$text")
+        }
     }
     return svgInfo
 }
 
-const val USE_PATH_FILES = true
+const val USE_PATH_FILES = false
 class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
-    val strokePaths : Array<Path>
-    private val strokeIdText : Array<PositionedTextInfo>?
+    var strokePaths : Array<Path>? = null
+    var strokeIdText : Array<PositionedTextInfo>? = null
     val charPath = Path()
     var width = 0f
         private set
@@ -135,7 +158,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
     private fun List<String>.strokesToPath( ): Path {
         val svgPath = SvgPath()
         for (stroke in this) {
-            val mr = "([a-zA-Z])([^a-zA-Z]+)".toRegex().find(stroke)
+            val mr = "([mltsc])([^mltsc]+)".toRegex(IGNORE_CASE).find(stroke)
             val (op, floatString) = mr!!.destructured
             val coord = "(-?\\d+(?:\\.\\d+)*)".toRegex()
                 .findAll(floatString)
@@ -146,10 +169,10 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
         }
         return svgPath
     }
-    private fun MutableList<String>.svgInfoToGraphicInfo()
+    private fun svgInfoToGraphicInfo(svgInfo : MutableList<String>)
             : Pair<Array<Path>, Array<PositionedTextInfo>?>
     {
-        var line = removeAt(0)
+        var line = svgInfo.removeAt(0)
         var matchResult : MatchResult? = null
         fun Regex.matchFind(string:String) : Boolean {
             matchResult = this.find(string)
@@ -161,10 +184,12 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
             return sequenceMatch!!.count() > 0
         }
         val strokes = mutableListOf<Path>()
-        while (isNotEmpty()) {
+        while (svgInfo.isNotEmpty()) {
             // for .pat files, first char is char for file.
             // discard for now.
-            if ("^(\\S+)\\s+(.*)".toRegex().matchFind(line)) {
+            if ("^[^\\u0000-\\u007F]\\s+(.*)".toRegex()
+                    .find(line)
+                    .also{matchResult} != null) {
                 line = matchResult!!.groupValues[2]
             }
             if (width == 0f) {
@@ -198,28 +223,36 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
                 }
             }
             Log.d("kvgToAndroidPath", "found ${strokes.size}")
-            line = removeAt(0)
+            line = svgInfo.removeAt(0)
         }
         return Pair(strokes.toTypedArray(), null)
     }
-    private val svgInfo : List<String>
     init {
-        if(USE_PATH_FILES) {
+        var svgInfo : MutableList<String>? = null
+        try {
+            if (USE_PATH_FILES) {
                 val reader = context.assets.open(
                     String.format("paths/%05x.pat", renderChar.toInt())
                 ).bufferedReader()
                 svgInfo = readPathFile(reader)
+            } else {
+                val reader = context.assets.open(
+                    String.format("svg/%05x.svg", renderChar.toInt())
+                ).bufferedReader()
+                svgInfo = readSvgFile(reader)
+            }
         }
-        else {
-            val reader = context.assets.open(
-                String.format("svg/%05x.svg", renderChar.toInt())
-            ).bufferedReader()
+        catch (e: java.lang.Exception) {
+            Toast.makeText(
+                context, "Read for \"${renderChar} FAILED:${e.message}", Toast.LENGTH_LONG
+            ).show()
+        }
+        if (svgInfo != null) {
+            val graphInfo = svgInfoToGraphicInfo(svgInfo)
+            val (strokePaths, strokeIdText) = graphInfo
+            KvgToAndroidPaths@ this.strokePaths = strokePaths
+            KvgToAndroidPaths@ this.strokeIdText = strokeIdText
+        }
 
-            svgInfo = readSvgFile(reader)
-        }
-        val graphInfo = svgInfo.svgInfoToGraphicInfo()
-        val(strokePaths, strokeIdText) = graphInfo
-        KvgToAndroidPaths@this.strokePaths = strokePaths
-        KvgToAndroidPaths@this.strokeIdText = strokeIdText
     }
 }
