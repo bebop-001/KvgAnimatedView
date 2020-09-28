@@ -1,6 +1,9 @@
+@file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection")
+
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
+import android.graphics.Matrix
 import android.graphics.Path
 import android.util.Log
 import java.io.BufferedReader
@@ -11,6 +14,11 @@ class SvgConvertException(message:String)
     constructor(op:String, found:Int, expected:Int) :
             this(String.format("op:%s expected %d args found %d",
                 op, found, expected))
+    constructor(renderChar:Char, isPathFile: Boolean, error:String) :
+            this(String.format("KvgToAndroidPaths filed for \"%c\" %s file:" +
+                    "Exception:%s", renderChar,
+                        if (isPathFile) "path file " else "svg file ",
+                error))
 }
 // to destructure more than 5 args.
 private operator fun FloatArray.component6() = this[5]
@@ -24,25 +32,26 @@ private class SvgPath : Path() {
     // relative to absolute coordinate system.
     var absX = 0f; var absY = 0f
 
-    // error check.  Throw an exception unless the array passed in is the
-    // expected size.
-    private fun FloatArray.check(op : String,  expected:Int) : FloatArray {
-        if (this.size != expected)
-            throw SvgConvertException(op, expected, this.size)
-        return this
-    }
-    // because of "s" svg shorthand bezier operator, it's easier
-    // to convert everything to absolute coordinate space.  To do
-    // that, add the last absolute x y value to the input array.
-    fun FloatArray.relToAbs(x:Float, y:Float) : FloatArray {
-        // odd index is x, even is y.
-        for (i in this.indices step 2) {
-            this[i] += x; this[i+1] += y
-        }
-        return this
-    }
     // convert the SVG opp passed in and add it to the path.
     fun convert(op : String, coords : FloatArray) {
+        // error check.  Throw an exception unless the array passed in is the
+        // expected size.
+        fun FloatArray.check(op : String,  expected:Int) : FloatArray {
+            if (this.size != expected)
+                throw SvgConvertException(op, expected, this.size)
+            return this
+        }
+        // because of "s" svg shorthand bezier operator, it's easier
+        // to convert everything to absolute coordinate space.  To do
+        // that, add the last absolute x y value to the input array.
+        fun FloatArray.relToAbs(x:Float, y:Float) : FloatArray {
+            // odd index is x, even is y.
+            for (i in this.indices step 2) {
+                this[i] += x; this[i+1] += y
+            }
+            return this
+        }
+
         Log.d("convert", "$op ${coords.map{it.toString()}}")
         when (op) {
             "l" -> {
@@ -85,9 +94,37 @@ private class SvgPath : Path() {
         }
     }
 }
+data class PositionedTextInfo(val text:String, val tMatrix: Matrix) {
 
-class KvgToAndroidPaths(context: Context, private val renderChar: String) {
-    var strokePaths:Array<Path>
+}
+// these read*File routines are separated so we can debug outside of Android.
+// path files are pre-parsed SVG files.
+private fun readPathFile(reader:BufferedReader) : MutableList<String> {
+    var line = reader.readLine()
+    val svgInfo = mutableListOf<String>()
+    while (line != null) {
+        if (!line.matches("^\\s*#.*".toRegex()))
+            svgInfo.add(line)
+        line = reader.readLine()
+    }
+    return svgInfo
+}
+// Parse the svg file.  We pull out path and text info here.
+private fun readSvgFile(reader: BufferedReader) : MutableList<String> {
+    var line = reader.readLine()
+    val svgInfo = mutableListOf<String>()
+    while (line != null) {
+        if (!line.matches("^\\s*#.*".toRegex()))
+            svgInfo.add(line)
+        line = reader.readLine()
+    }
+    return svgInfo
+}
+
+const val USE_PATH_FILES = true
+class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
+    val strokePaths : Array<Path>
+    private val strokeIdText : Array<PositionedTextInfo>?
     val charPath = Path()
     var width = 0f
         private set
@@ -109,47 +146,45 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
         }
         return svgPath
     }
-    private fun readPathFile(reader:BufferedReader) : MutableList<String> {
-        var line = reader.readLine()
-        var svgInfo = mutableListOf<String>()
-        while (line != null) {
-            if (!line.matches("^\\s*#.*".toRegex()))
-                svgInfo.add(line)
-            line = reader.readLine()
+    private fun MutableList<String>.svgInfoToGraphicInfo()
+            : Pair<Array<Path>, Array<PositionedTextInfo>?>
+    {
+        var line = removeAt(0)
+        var matchResult : MatchResult? = null
+        fun Regex.matchFind(string:String) : Boolean {
+            matchResult = this.find(string)
+            return matchResult == null
         }
-        return svgInfo
-    }
-    init {
-        // each Path will represent a stroke.
+        var sequenceMatch : Sequence<MatchResult>? = null
+        fun Regex.sequenceFind(string:String) : Boolean {
+            sequenceMatch = this.findAll(string)
+            return sequenceMatch!!.count() > 0
+        }
         val strokes = mutableListOf<Path>()
-        val charsIn = renderChar.toCharArray()
-        val fnameIn = String.format("paths/%05x.pat", charsIn[0].toInt())
-        val reader = context.assets.open(fnameIn).bufferedReader()
-        val svgInfo = readPathFile(reader)
-        var line = svgInfo.removeAt(0)
-        var match : MatchResult?
-        var mmm : Sequence<MatchResult>
-        while (svgInfo.isNotEmpty()) {
-            match = "^(\\S+)\\s+(.*)".toRegex().find(line)
-            if (match != null) {
-                // chIn nly there for path files and not used groupValues[1];
-                line = match.groupValues[2]
+        while (isNotEmpty()) {
+            // for .pat files, first char is char for file.
+            // discard for now.
+            if ("^(\\S+)\\s+(.*)".toRegex().matchFind(line)) {
+                line = matchResult!!.groupValues[2]
             }
-            if (KvgToAndroidPaths@this.width == 0f) {
-                val m = "\\d+".toRegex().findAll(line)
-                    .map{it.value.toFloat()}.toList()
-                if (m != null && m.size == 2) {
-                    KvgToAndroidPaths@this.width = m[0]
-                    KvgToAndroidPaths@this.height = m[1]
+            if (width == 0f) {
+                if ("\\d+".toRegex().sequenceFind(line)) {
+                    val w_h = sequenceMatch!!
+                        .map{it.value.toFloat()}
+                        .toList()
+                    if (w_h.size == 2) {
+                        width = w_h[0]
+                        height = w_h[1]
+                    }
                 }
-                else throw SvgConvertException(
+                if (width == 0f) throw SvgConvertException(
                     "failed to find width/height at first non-comment line."
                 )
             }
-            else if ("([mltsc][^mltsc]+)".toRegex(RegexOption.IGNORE_CASE)
-                    .findAll(line)
-                    .also{mmm = it} != null) {
-                val pathOps = mmm.map{it.value}.toList()
+            // unfortunately Kotlin Lint doesn't grok it's own .also crap.
+            else if ("(?:([mltsc])([^mltsc]+))".toRegex(RegexOption.IGNORE_CASE)
+                    .sequenceFind(line)) {
+                val pathOps = sequenceMatch!!.map{it.value}.toList()
                 if (pathOps.isEmpty()) {
                     throw throw SvgConvertException(
                         "No SVG path operations found in \"$line\"")
@@ -158,17 +193,33 @@ class KvgToAndroidPaths(context: Context, private val renderChar: String) {
                     strokes.add(pathOps.strokesToPath())
                 }
                 catch (e : Exception) {
-                    throw RuntimeException(
-                        "File $fnameIn, path exception for \"$line\"\n:${e}")
+                    throw SvgConvertException(renderChar, USE_PATH_FILES,
+                        "path exception for \"$line\":${e}")
                 }
             }
-            else {
-                throw RuntimeException(
-                    "File $fnameIn, line \"$line\": no SVG Path operator at start of line.")
-            }
-            line = svgInfo.removeAt(0)
+            Log.d("kvgToAndroidPath", "found ${strokes.size}")
+            line = removeAt(0)
         }
-        Log.d("kvgToAndroidPath", "found ${strokes.size}")
-        strokePaths = strokes.toTypedArray()
+        return Pair(strokes.toTypedArray(), null)
+    }
+    private val svgInfo : List<String>
+    init {
+        if(USE_PATH_FILES) {
+                val reader = context.assets.open(
+                    String.format("paths/%05x.pat", renderChar.toInt())
+                ).bufferedReader()
+                svgInfo = readPathFile(reader)
+        }
+        else {
+            val reader = context.assets.open(
+                String.format("svg/%05x.svg", renderChar.toInt())
+            ).bufferedReader()
+
+            svgInfo = readSvgFile(reader)
+        }
+        val graphInfo = svgInfo.svgInfoToGraphicInfo()
+        val(strokePaths, strokeIdText) = graphInfo
+        KvgToAndroidPaths@this.strokePaths = strokePaths
+        KvgToAndroidPaths@this.strokeIdText = strokeIdText
     }
 }
