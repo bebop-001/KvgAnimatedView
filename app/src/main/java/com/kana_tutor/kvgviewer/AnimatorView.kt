@@ -72,7 +72,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         var viewHeight = 0f
         var endPoints = mutableListOf<PointF>()
         // called from KanaAnimator to select our character.
-        fun setRenderCharacter(renderChar: String, context: Context) {
+        fun setRenderCharacter(renderChar: Char, context: Context) {
             val kp  = KvgToAndroidPaths(context, renderChar)
             // for normalize.
             charWidth = kp.width
@@ -135,7 +135,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         with(textPaint) {
             color = ContextCompat.getColor(context, R.color.text_color)
             setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
-            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
         // used to paint a blured version of the character
         // so user can see what's being painted.
@@ -218,9 +218,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
             if (strokePathCounter == strokePaths.size) {
-                for (i in endPoints.indices) {
-                    val (x, y) = endPoints[i]
-                    canvas.drawText((i + 1).toString(), x, y, textPaint);
+                for (ep in endPoints.indices) {
+                    val (x, y) = endPoints[ep]
+                    canvas.drawText((ep + 1).toString(), x, y, textPaint)
                 }
                 canvas.drawCircle(pos[0], pos[1], _dp(3f), textPaint)
             }
