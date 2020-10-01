@@ -114,7 +114,7 @@ fun readPathFile(reader:BufferedReader) : MutableList<String> {
 }
 val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
 val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
-val textRegex = "^\\s*<text.*matrix\\(([^)]+)\\)[^>]+>([^<]+)".toRegex()
+val textRegex = "^\\s*<text.*matrix\\([^)]+\\s+((?:\\d+.)\\d+)\\s+((?:\\d+.)\\d+)\\)[^>]+>([^<]+)".toRegex()
 // Parse the svg file.  We pull out path and text info here.
 fun readSvgFile(reader: BufferedReader) : MutableList<String> {
     var lineCounter = 0
@@ -136,9 +136,8 @@ fun readSvgFile(reader: BufferedReader) : MutableList<String> {
             // text is <text, a translation matrix, then text.
             // I'm rerpresenting that with 'x$matrix:$text where matrix is the
             // comma separated values from the matrix
-            val(m,text) = matchResult!!.destructured
-            val matrix = m.split("\\s+".toRegex()).joinToString(",")
-            svgInfo.add("x$matrix:$text")
+            val(x, y, text) = matchResult!!.destructured
+            svgInfo.add("x$x,$y,$text")
         }
     }
     return svgInfo
