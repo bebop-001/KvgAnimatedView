@@ -35,8 +35,9 @@ class KanaAnimator : Activity() {
         AnimatorView.setAnimateSpeed(animateSpeed)
         val animateView: AnimatorView = findViewById(R.id.animator_view)
         animateView.setOnClickListener {
+            // render char is only first char in string.
             AnimatorView.setRenderCharacter(
-                renderChar,this@KanaAnimator)
+                renderChar.toCharArray()[0],this@KanaAnimator)
             animateView.invalidate()
             // animateKana.show(this, animateView)
         }
@@ -54,7 +55,9 @@ class KanaAnimator : Activity() {
                     .putString("renderChar", renderChar)
                     .apply()
                 intent = null
-                AnimatorView.setRenderCharacter(renderChar, this)
+                // reduce string in to first character only.
+                AnimatorView.setRenderCharacter(
+                    renderChar.toCharArray()[0], this)
             }
         }
         // register for the speed-set context menu.

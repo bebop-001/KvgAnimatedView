@@ -5,6 +5,7 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.component1
 import androidx.core.graphics.component2
@@ -28,6 +29,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         private val renderedCharPath = Path()
 
         private lateinit var strokePaths: Array<Path>
+        private lateinit var strokeIdText: Array<PositionedTextInfo>
         private lateinit var charPath: Path
 
         private var distance = 0f //distance moved
@@ -79,20 +81,38 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             charHeight = kp.height
             scaleMatrix.setScale(
                 viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
-            strokePaths = kp.strokePaths
-            endPoints.clear()
-            for (i in 0 .. strokePaths.lastIndex)
-                endPoints.add(PointF())
-            charPath = kp.charPath
-            startNewLine = true
-            strokePathCounter = 0
-            renderedCharPath.reset()
-            gridPath.renderGrid()
-            gridPath.transform(scaleMatrix)
-            for (i in strokePaths.indices) {
-                strokePaths[i].transform(scaleMatrix)
+            if (kp.strokePaths != null) {
+                strokePaths = kp.strokePaths!!
+                endPoints.clear()
+                for (i in 0..strokePaths!!.lastIndex)
+                    endPoints.add(PointF())
+                charPath = kp.charPath
+                startNewLine = true
+                strokePathCounter = 0
+                renderedCharPath.reset()
+                gridPath.renderGrid()
+                gridPath.transform(scaleMatrix)
+                for (i in strokePaths.indices) {
+                    strokePaths[i].transform(scaleMatrix)
+                }
+                strokePaths.map { charPath.addPath(it) }
             }
-            strokePaths.map{ charPath.addPath(it)}
+            else {
+                Toast.makeText(context,
+                    "No strokes found for $renderChar",
+                    Toast.LENGTH_LONG)
+                    .show()
+                return
+            }
+            if (kp.strokeIdText != null) {
+                strokeIdText = kp.strokeIdText!!
+            }
+            else {
+                Toast.makeText(context,
+                    "No stroke tag info for $renderChar",
+                    Toast.LENGTH_LONG)
+                    .show()
+            }
         }
     }
     // convert pix/font point for display independence
