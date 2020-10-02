@@ -4,7 +4,7 @@ This is an Android Custom View for viewing an animated rendering of Kvg Kanji St
 
 [<img src="./images/Screenshot1.png" 
 	alt="App screenshot"
-	width="320" />]
+	width="700" />]
 
 [<img src="./images/google-play-badge.png"
       alt="Get it on Google Play"
