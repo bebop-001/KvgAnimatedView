@@ -7,8 +7,6 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.component1
-import androidx.core.graphics.component2
 
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
@@ -44,6 +42,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
         private val gridPath = Path()
 
+        fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
+            val src = floatArrayOf(this.x, this.y)
+            val dst = floatArrayOf(0f,0f)
+            matrix.mapPoints(dst, src)
+            val rv = PositionedTextInfo(dst[0], dst[1], text)
+            Log.d("putText", "$this -> $rv")
+            return rv
+        }
+        fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
+            drawText(text.text, text.x, text.y, paint)
+        }
         private fun Path.renderGrid() {
             reset()
             moveTo(0.5f, 0.5f)
@@ -72,7 +81,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
         var viewWidth = 0f
         var viewHeight = 0f
-        var endPoints = mutableListOf<PointF>()
+        val positionedText = mutableListOf<PositionedTextInfo>()
         // called from KanaAnimator to select our character.
         fun setRenderCharacter(renderChar: Char, context: Context) {
             val kp  = KvgToAndroidPaths(context, renderChar)
@@ -83,9 +92,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
             if (kp.strokePaths != null) {
                 strokePaths = kp.strokePaths!!
-                endPoints.clear()
-                for (i in 0..strokePaths!!.lastIndex)
-                    endPoints.add(PointF())
                 charPath = kp.charPath
                 startNewLine = true
                 strokePathCounter = 0
@@ -106,6 +112,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
             if (kp.strokeIdText != null) {
                 strokeIdText = kp.strokeIdText!!
+                for(info in strokeIdText) {
+                    positionedText.add(info.putText(scaleMatrix))
+                }
             }
             else {
                 Toast.makeText(context,
@@ -128,6 +137,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val bgCharPaint : Paint
     private val gridPaint : Paint
     private val textPaint : Paint
+    private val textBgPaint : Paint
     // one time initialization at start of first object.
     init{
         // Various paint objects used during render.
@@ -154,6 +164,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         textPaint = Paint()
         with(textPaint) {
             color = ContextCompat.getColor(context, R.color.text_color)
+            setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
+            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
+        }
+        textBgPaint = Paint()
+        with(textBgPaint) {
+            color = ContextCompat.getColor(context, R.color.text_bg_color)
+            maskFilter = BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
             setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
@@ -220,7 +237,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                         renderedCharPath.lineTo(pos[0], pos[1])
                         canvas.drawCircle(pos[0], pos[1], _dp(3f), cursorPaint)
                         // Catch end points as we go.
-                        endPoints[strokePathCounter].set(pos[0], pos[1])
                     }
                 }
                 else {
@@ -238,9 +254,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
             if (strokePathCounter == strokePaths.size) {
-                for (ep in endPoints.indices) {
-                    val (x, y) = endPoints[ep]
-                    canvas.drawText((ep + 1).toString(), x, y, textPaint)
+                for (ti in positionedText) {
+                    // Paint a white background first to make text
+                    // stand out, then paint the text.
+                    canvas.renderText(ti, textBgPaint)
+                    canvas.renderText(ti, textBgPaint)
+                    canvas.renderText(ti, textPaint)
                 }
                 canvas.drawCircle(pos[0], pos[1], _dp(3f), textPaint)
             }

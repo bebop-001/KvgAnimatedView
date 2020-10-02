@@ -1,9 +1,8 @@
-@file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection")
+@file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection", "LocalVariableName")
 
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
-import android.graphics.Matrix
 import android.graphics.Path
 import android.util.Log
 import android.widget.Toast
@@ -97,9 +96,8 @@ private class SvgPath : Path() {
         }
     }
 }
-data class PositionedTextInfo(val x : Float, val y:Float, val text:String) {
+data class PositionedTextInfo(val x : Float, val y:Float, val text:String)
 
-}
 // these read*File routines are separated so we can debug outside of Android.
 // path files are pre-parsed SVG files.
 fun readPathFile(reader:BufferedReader) :
@@ -107,8 +105,7 @@ fun readPathFile(reader:BufferedReader) :
 {
     val pathInfo = mutableListOf<String>()
     val textInfo = mutableListOf<PositionedTextInfo>()
-    var line = ""
-    val svgInfo = mutableListOf<String>()
+    var line : String
     nextLine@while (reader.readLine().also{line = it} != null) {
         if (line.matches("^\\s*#.*".toRegex())) continue@nextLine
         if (line.startsWith("x",true)) {
@@ -137,7 +134,6 @@ fun readSvgFile(reader: BufferedReader) :
     val pathInfo = mutableListOf<String>()
     val textInfo = mutableListOf<PositionedTextInfo>()
     var lineCounter = 0
-    val svgInfo = mutableListOf<String>()
     var matchResult : MatchResult?
     var line = reader.readLine()
     nextLine@while (reader.readLine().also{line = it} != null) {
@@ -191,10 +187,6 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
             : Array<Path>
     {
         var matchResult : MatchResult? = null
-        fun Regex.matchFind(string:String) : Boolean {
-            matchResult = this.find(string)
-            return matchResult == null
-        }
         var sequenceMatch : Sequence<MatchResult>? = null
         fun Regex.sequenceFind(string:String) : Boolean {
             sequenceMatch = this.findAll(string)
@@ -225,7 +217,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
                 )
             }
             // unfortunately Kotlin Lint doesn't grok it's own .also crap.
-            else if ("(?:([mltsc])([^mltsc]+))".toRegex(RegexOption.IGNORE_CASE)
+            else if ("(?:([mltsc])([^mltsc]+))".toRegex(IGNORE_CASE)
                     .sequenceFind(line)) {
                 val pathOps = sequenceMatch!!.map{it.value}.toList()
                 if (pathOps.isEmpty()) {
@@ -261,7 +253,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
         }
         catch (e: java.lang.Exception) {
             Toast.makeText(
-                context, "Read for \"${renderChar} FAILED:${e.message}", Toast.LENGTH_LONG
+                context, "Read for \"$renderChar FAILED:${e.message}", Toast.LENGTH_LONG
             ).show()
         }
         val (strokePathInfo, strokeTextInfo) = pathInfo!!

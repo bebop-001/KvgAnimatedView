@@ -10,5 +10,6 @@
     <color name="grid_color">#800000ff</color>
     <color name="pointer_color">#aff00000</color>
     <color name="text_color">#FF4336</color>
+    <color name="text_bg_color">#FFFFFFFF</color>
 
 </resources>
