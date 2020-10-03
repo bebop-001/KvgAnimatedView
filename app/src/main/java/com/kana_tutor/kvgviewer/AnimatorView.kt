@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 Steven Smith kana-tutor.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
@@ -10,6 +25,8 @@ import androidx.core.content.ContextCompat
 
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
+// See https://c05mic.com/2012/03/23/animating-a-bitmap-using-path-and-pathmeasure-android/
+// for the concept behind the animation.
 class AnimatorView(context: Context, attrs: AttributeSet) :
         View(context, attrs)
 {
@@ -47,7 +64,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             val dst = floatArrayOf(0f,0f)
             matrix.mapPoints(dst, src)
             val rv = PositionedTextInfo(dst[0], dst[1], text)
-            Log.d("putText", "$this -> $rv")
+            // Log.d("putText", "$this -> $rv")
             return rv
         }
         fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
@@ -213,7 +230,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         for (i in 0 until animateSteps) {
             if (strokePathCounter < strokePaths.size) {
                 if (startNewLine) {
-                    Log.d("draw", "stroke $strokePathCounter")
+                    // Log.d("draw", "stroke $strokePathCounter")
                     distance = 0f
                     pause = true
                     // measure the length of the current path.
@@ -266,7 +283,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             else {
                 canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
             }
-            Log.d("draw", "${pos[0]},${pos[1]}")
+            // Log.d("draw", "${pos[0]},${pos[1]}")
         }
     }
 }
