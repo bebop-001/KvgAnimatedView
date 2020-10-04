@@ -174,10 +174,9 @@ fun readSvgFile(reader: BufferedReader) :
 }
 
 const val USE_PATH_FILES = false
-class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
+class KvgToAndroidPaths(context: Context, val renderChar: Char) {
     var strokePaths : Array<Path>? = null
     var strokeIdText : Array<PositionedTextInfo>? = null
-    val charPath = Path()
     var width = 0f
         private set
     var height = 0f
@@ -271,8 +270,10 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
                 context, "Read for \"$renderChar FAILED:${e.message}", Toast.LENGTH_LONG
             ).show()
         }
-        val (strokePathInfo, strokeTextInfo) = pathInfo!!
-        KvgToAndroidPaths@ this.strokePaths = svgInfoToGraphicInfo(strokePathInfo)
-        KvgToAndroidPaths@ this.strokeIdText = strokeTextInfo
+        if (pathInfo != null) {
+            val (strokePathInfo, strokeTextInfo) = pathInfo
+            KvgToAndroidPaths@ this.strokePaths = svgInfoToGraphicInfo(strokePathInfo)
+            KvgToAndroidPaths@ this.strokeIdText = strokeTextInfo
+        }
     }
 }

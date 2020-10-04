@@ -43,9 +43,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // contains paths 'rendered' during the animation.
         private val renderedCharPath = Path()
 
-        private lateinit var strokePaths: Array<Path>
-        private lateinit var strokeIdText: Array<PositionedTextInfo>
-        private lateinit var charPath: Path
+        private var strokePaths: Array<Path>? = null
+        private var strokeIdText: Array<PositionedTextInfo>? = null
+        private var charPath = Path()
 
         private var distance = 0f //distance moved
 
@@ -100,44 +100,30 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         var viewHeight = 0f
         val positionedText = mutableListOf<PositionedTextInfo>()
         // called from KanaAnimator to select our character.
-        fun setRenderCharacter(renderChar: Char, context: Context) {
-            val kp  = KvgToAndroidPaths(context, renderChar)
+        fun setRenderCharacter(kp: KvgToAndroidPaths) {
+            if (kp.strokePaths == null || kp.strokeIdText == null) {
+                Log.d("setRenderChar", "stroke paths or text null")
+                return
+            }
             // for normalize.
             charWidth = kp.width
             charHeight = kp.height
+            strokePaths = kp.strokePaths!!
+            strokeIdText = kp.strokeIdText!!
+
             scaleMatrix.setScale(
                 viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
-            if (kp.strokePaths != null) {
-                strokePaths = kp.strokePaths!!
-                charPath = kp.charPath
-                startNewLine = true
-                strokePathCounter = 0
-                renderedCharPath.reset()
-                gridPath.renderGrid()
-                gridPath.transform(scaleMatrix)
-                for (i in strokePaths.indices) {
-                    strokePaths[i].transform(scaleMatrix)
-                }
-                strokePaths.map { charPath.addPath(it) }
+            startNewLine = true
+            strokePathCounter = 0
+            renderedCharPath.reset()
+            gridPath.renderGrid()
+            gridPath.transform(scaleMatrix)
+            for (i in strokePaths!!.indices) {
+                strokePaths!![i].transform(scaleMatrix)
             }
-            else {
-                Toast.makeText(context,
-                    "No strokes found for $renderChar",
-                    Toast.LENGTH_LONG)
-                    .show()
-                return
-            }
-            if (kp.strokeIdText != null) {
-                strokeIdText = kp.strokeIdText!!
-                for(info in strokeIdText) {
-                    positionedText.add(info.putText(scaleMatrix))
-                }
-            }
-            else {
-                Toast.makeText(context,
-                    "No stroke tag info for $renderChar",
-                    Toast.LENGTH_LONG)
-                    .show()
+            strokePaths!!.map { charPath.addPath(it) }
+            strokeIdText!!.map{
+                positionedText.add(it.putText(scaleMatrix))
             }
         }
     }
@@ -222,19 +208,24 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
+        if (strokePaths == null || strokeIdText == null) {
+            Log.d("AnimatorView", "onDraw called with null paths or text")
+            return
+        }
+
         // draw the ghost char and grid.
         canvas.drawPath(charPath, bgCharPaint)
         canvas.drawPath(gridPath, gridPaint)
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
         for (i in 0 until animateSteps) {
-            if (strokePathCounter < strokePaths.size) {
+            if (strokePathCounter < strokePaths!!.size) {
                 if (startNewLine) {
                     // Log.d("draw", "stroke $strokePathCounter")
                     distance = 0f
                     pause = true
                     // measure the length of the current path.
-                    charPathMeasure.setPath(strokePaths[strokePathCounter], false)
+                    charPathMeasure.setPath(strokePaths!![strokePathCounter], false)
                     pathLength = charPathMeasure.length
                 }
                 if (distance < pathLength + animationStepDistance) {
@@ -270,7 +261,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
-            if (strokePathCounter == strokePaths.size) {
+            if (strokePathCounter == strokePaths!!.size) {
                 for (ti in positionedText) {
                     // Paint a white background first to make text
                     // stand out, then paint the text.
