@@ -15,8 +15,5 @@
  * limitations under the License.
 -->
 <resources>
-    <dimen name="anim_view_width">250dp</dimen>
-    <dimen name="anim_view_height">250dp</dimen>
-
     <dimen name="animateNotationTextSize">25sp</dimen>
 </resources>

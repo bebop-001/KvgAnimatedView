@@ -36,7 +36,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         private var charHeight = 0f
 
         // used to scale char to view size.
-        private val scaleMatrix = Matrix()
+        private lateinit var scaleMatrix: Matrix
 
         private val charPathMeasure = PathMeasure()
 
@@ -57,8 +57,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         private var startTime = 0L
         private var startNewLine = true
 
-        private val gridPath = Path()
-
         fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
             val src = floatArrayOf(this.x, this.y)
             val dst = floatArrayOf(0f,0f)
@@ -71,19 +69,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             drawText(text.text, text.x, text.y, paint)
         }
         private lateinit var gridPaint : Paint
-        private fun Canvas.renderGrid() {
-            val (left, top, right, bottom) =
-                arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
-            drawRect(RectF(left, top, right, bottom), gridPaint)
-            val h = viewHeight / 3
-            drawLine(left, h, right, h, gridPaint)
-            drawLine(left, 2 * h, right, 2 * h, gridPaint)
-            val w = viewWidth / 3
-            drawLine(w, top, w, bottom, gridPaint)
-            drawLine(2 * w, top, 2 * w, bottom, gridPaint)
 
-            Log.d("renderGrid", "$width, $height")
-        }
         // speed of animation is determined by number of steps.
         // More steps per frame == faster animation.
         private val speed = intArrayOf(3, 6, 9)
@@ -106,18 +92,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokePaths = kp.strokePaths!!
             strokeIdText = kp.strokeIdText!!
 
-            scaleMatrix.setScale(
-                viewWidth/ charWidth, viewHeight/ charHeight, 0f, 0f)
             startNewLine = true
             strokePathCounter = 0
             renderedCharPath.reset()
-            for (i in strokePaths!!.indices) {
-                strokePaths!![i].transform(scaleMatrix)
-            }
-            strokePaths!!.map { charPath.addPath(it) }
-            strokeIdText!!.map{
-                positionedText.add(it.putText(scaleMatrix))
-            }
         }
     }
     // convert pix/font point for display independence
@@ -132,6 +109,40 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         return this * resources.displayMetrics.density
     }
     private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
+
+    private fun Canvas.renderGrid() {
+        val (left, top, right, bottom) =
+            arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
+        drawRect(RectF(left, top, right, bottom), gridPaint)
+        val h = viewHeight / 3
+        drawLine(left, h, right, h, gridPaint)
+        drawLine(left, 2 * h, right, 2 * h, gridPaint)
+        val w = viewWidth / 3
+        drawLine(w, top, w, bottom, gridPaint)
+        drawLine(2 * w, top, 2 * w, bottom, gridPaint)
+    }
+
+    // Wait for view size change and grab the measured size of the
+    // view.  Set the scale matrix based on the view size and scale
+    // the paths as necessary.
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        Log.d("onSizeChanged", "$w, $h, $oldw, $oldh")
+        // Needed to scale width/height to char sizes passed in.
+        viewWidth = w.toFloat()
+        viewHeight = h.toFloat()
+        scaleMatrix = Matrix()
+        scaleMatrix.setScale(
+            viewWidth/ charWidth, viewHeight/ charHeight,
+            0f, 0f)
+        for (i in strokePaths!!.indices) {
+            strokePaths!![i].transform(scaleMatrix)
+        }
+        strokePaths!!.map { charPath.addPath(it) }
+        strokeIdText!!.map{
+            positionedText.add(it.putText(scaleMatrix))
+        }
+    }
 
     private val renderedCharPaint : Paint
     private val cursorPaint : Paint
@@ -192,9 +203,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokeWidth = 3f.dpToPx()
             style = Paint.Style.STROKE
         }
-        // Needed to scale width/height to char sizes passed in.
-        viewWidth = resources.getDimension(R.dimen.anim_view_height)
-        viewHeight = resources.getDimension(R.dimen.anim_view_width)
     }
 
 

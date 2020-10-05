@@ -69,7 +69,7 @@ private class SvgPath : Path() {
             return this
         }
 
-        Log.d("convert", "$op ${coords.map{it.toString()}}")
+        // Log.d("convert", "$op ${coords.map{it.toString()}}")
         when (op) {
             "l" -> {
                 convert("L", coords.relToAbs(absX, absY))

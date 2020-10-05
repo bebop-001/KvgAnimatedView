@@ -30,8 +30,8 @@
     	
         <com.kana_tutor.kvgviewer.AnimatorView
         	android:id="@+id/animator_view"
-			android:layout_width="@dimen/anim_view_width"
-			android:layout_height="@dimen/anim_view_height"
+			android:layout_width="200dp"
+			android:layout_height="200dp"
 			android:background="@color/animate_bg"
 		/>
     	
