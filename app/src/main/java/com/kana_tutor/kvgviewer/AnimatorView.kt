@@ -200,7 +200,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
-        canvas.drawColor(ContextCompat.getColor(context, R.color.animate_bg))
         if (strokePaths == null || strokeIdText == null) {
             Log.d("AnimatorView", "onDraw called with null paths or text")
             canvas.renderGrid()

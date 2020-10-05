@@ -32,6 +32,7 @@
         	android:id="@+id/animator_view"
 			android:layout_width="@dimen/anim_view_width"
 			android:layout_height="@dimen/anim_view_height"
+			android:background="@color/animate_bg"
 		/>
     	
     </FrameLayout>
