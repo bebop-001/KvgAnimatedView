@@ -121,12 +121,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
     }
     // convert pix/font point for display independence
-    private fun _dp(pixels: Float): Float {
-        var dp = pixels * resources.displayMetrics.density
+    private fun Float.pxToDp(): Float {
+        var dp = this / resources.displayMetrics.density
         // dp = 1 pixel if its zero to prevent divide by 0 error.
         if (dp < 1) dp = 1f
         return dp
     }
+    private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
+    private fun Float.dpToPx(): Float {
+        return this * resources.displayMetrics.density
+    }
+    private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
 
     private val renderedCharPaint : Paint
     private val cursorPaint : Paint
@@ -140,7 +145,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         renderedCharPaint = Paint()
         with(renderedCharPaint) {
             color = ContextCompat.getColor(context, R.color.rendered_char)
-            strokeWidth = _dp(10f)
+            strokeWidth = 10f.dpToPx()
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
@@ -150,10 +155,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         cursorPaint = Paint()
         with(cursorPaint) {
             color = ContextCompat.getColor(context, R.color.pointer_color)
-            strokeWidth = _dp(1.0f)
+            strokeWidth = 1f.dpToPx()
             style = Paint.Style.FILL_AND_STROKE
             maskFilter = setMaskFilter(
-                BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
+                BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
             )
         }
         textPaint = Paint()
@@ -165,7 +170,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         textBgPaint = Paint()
         with(textBgPaint) {
             color = ContextCompat.getColor(context, R.color.text_bg_color)
-            maskFilter = BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
+            maskFilter = BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
             setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
@@ -174,28 +179,30 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         bgCharPaint = Paint()
         with(bgCharPaint) {
             color = ContextCompat.getColor(context, R.color.rendered_char_bg)
-            strokeWidth = _dp(6f)
+            strokeWidth = 6f.dpToPx()
             style = Paint.Style.STROKE
             // set android:hardwareAccelerated="false" for activity
             // in AndroidManifest.xml for this to work.
-            maskFilter = BlurMaskFilter(_dp(5f), BlurMaskFilter.Blur.NORMAL)
+            maskFilter = BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
         }
         // used to paint the grid.
         gridPaint = Paint()
         with(gridPaint) {
             color = ContextCompat.getColor(context, R.color.grid_color)
-            strokeWidth = _dp(3f)
+            strokeWidth = 3f.dpToPx()
             style = Paint.Style.STROKE
         }
         // Needed to scale width/height to char sizes passed in.
         viewWidth = resources.getDimension(R.dimen.anim_view_height)
         viewHeight = resources.getDimension(R.dimen.anim_view_width)
     }
+
+
     // render rate milliseconds. sets our frame rate.  This rate was chosen
     // because my oldest device (android 4.4) could handle it.
     private val renderRate = 75
     //distance each animationStepDistance
-    private val animationStepDistance = _dp(3f)
+    private val animationStepDistance = 3f.dpToPx()
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         var pause = false
@@ -236,7 +243,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     }
                     else {
                         renderedCharPath.lineTo(pos[0], pos[1])
-                        canvas.drawCircle(pos[0], pos[1], _dp(3f), cursorPaint)
+                        canvas.drawCircle(pos[0], pos[1], 3f.dpToPx(), cursorPaint)
                         // Catch end points as we go.
                     }
                 }
@@ -262,10 +269,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     canvas.renderText(ti, textBgPaint)
                     canvas.renderText(ti, textPaint)
                 }
-                canvas.drawCircle(pos[0], pos[1], _dp(3f), textPaint)
+                canvas.drawCircle(pos[0], pos[1], 3f.dpToPx(), textPaint)
             }
             else {
-                canvas.drawCircle(pos[0], pos[1], _dp(7f), cursorPaint)
+                canvas.drawCircle(pos[0], pos[1], 7f.dpToPx(), cursorPaint)
             }
             // Log.d("draw", "${pos[0]},${pos[1]}")
         }
