@@ -70,24 +70,19 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
             drawText(text.text, text.x, text.y, paint)
         }
-        private fun Path.renderGrid() {
-            reset()
-            moveTo(0.5f, 0.5f)
-            lineTo(0.5f, charWidth - 0.5f)
-            lineTo(charHeight - 0.5f, charWidth - 0.5f)
-            lineTo(charHeight - 0.5f, 0.5f)
-            lineTo(0.5f, 0.5f)
-            var h = 0f; var w = 0f
-            while (h < charHeight) {
-                moveTo(0.5f, h + 0.5f)
-                lineTo(charWidth - 0.5f, h + 0.5f)
-                h += (charHeight / 3f)
-            }
-            while (w < charWidth) {
-                moveTo(w + 0.5f, 0.5f)
-                lineTo(w + 0.5f, charHeight - 0.5f)
-                w += (charWidth / 3f)
-            }
+        private lateinit var gridPaint : Paint
+        private fun Canvas.renderGrid() {
+            val (left, top, right, bottom) =
+                arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
+            drawRect(RectF(left, top, right, bottom), gridPaint)
+            val h = viewHeight / 3
+            drawLine(left, h, right, h, gridPaint)
+            drawLine(left, 2 * h, right, 2 * h, gridPaint)
+            val w = viewWidth / 3
+            drawLine(w, top, w, bottom, gridPaint)
+            drawLine(2 * w, top, 2 * w, bottom, gridPaint)
+
+            Log.d("renderGrid", "$width, $height")
         }
         // speed of animation is determined by number of steps.
         // More steps per frame == faster animation.
@@ -116,8 +111,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             startNewLine = true
             strokePathCounter = 0
             renderedCharPath.reset()
-            gridPath.renderGrid()
-            gridPath.transform(scaleMatrix)
             for (i in strokePaths!!.indices) {
                 strokePaths!![i].transform(scaleMatrix)
             }
@@ -138,7 +131,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val renderedCharPaint : Paint
     private val cursorPaint : Paint
     private val bgCharPaint : Paint
-    private val gridPaint : Paint
     private val textPaint : Paint
     private val textBgPaint : Paint
     // one time initialization at start of first object.
@@ -208,14 +200,16 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
+        canvas.drawColor(ContextCompat.getColor(context, R.color.animate_bg))
         if (strokePaths == null || strokeIdText == null) {
             Log.d("AnimatorView", "onDraw called with null paths or text")
+            canvas.renderGrid()
             return
         }
 
         // draw the ghost char and grid.
         canvas.drawPath(charPath, bgCharPaint)
-        canvas.drawPath(gridPath, gridPaint)
+        canvas.renderGrid()
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
         for (i in 0 until animateSteps) {

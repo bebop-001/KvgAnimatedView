@@ -27,4 +27,6 @@
     <color name="text_color">#FF4336</color>
     <color name="text_bg_color">#FFFFFFFF</color>
 
+    <color name="animate_bg">#FFFFF0</color>
+
 </resources>
