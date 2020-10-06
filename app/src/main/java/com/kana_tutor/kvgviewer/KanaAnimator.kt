@@ -36,6 +36,7 @@ class KanaAnimator : Activity() {
 
     private var animateSpeed = 0
     private lateinit var prefs: SharedPreferences
+    private lateinit var animatorView : AnimatorView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.animator_view)
@@ -46,14 +47,14 @@ class KanaAnimator : Activity() {
 
         // cause display properties to init.
         // DisplayProperties(this, R.id.animate_layout)
-        AnimatorView.setAnimateSpeed(animateSpeed)
-        val animateView: AnimatorView = findViewById(R.id.animator_view)
-        animateView.setOnClickListener {
+        animatorView = findViewById(R.id.animator_view)
+        animatorView.setAnimateSpeed(animateSpeed)
+        animatorView.setOnClickListener {
             // render char is only first char in string.
             val kp  = KvgToAndroidPaths(this, renderChar.toCharArray()[0])
 
-            AnimatorView.setRenderCharacter(kp)
-            animateView.invalidate()
+            animatorView.setRenderCharacter(kp)
+            animatorView.invalidate()
             // animateKana.show(this, animateView)
         }
         // If user touches screen outside of the animate view, exit.
@@ -72,7 +73,7 @@ class KanaAnimator : Activity() {
                 intent = null
                 // reduce string in to first character only.
                 val kp  = KvgToAndroidPaths(this, renderChar.toCharArray()[0])
-                AnimatorView.setRenderCharacter(kp)
+                animatorView.setRenderCharacter(kp)
             }
         }
         // register for the speed-set context menu.
@@ -104,7 +105,7 @@ class KanaAnimator : Activity() {
         e.putInt("animateSpeed", speed)
         e.apply()
         animateSpeed = speed
-        AnimatorView.setAnimateSpeed(speed)
+        animatorView.setAnimateSpeed(speed)
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View,

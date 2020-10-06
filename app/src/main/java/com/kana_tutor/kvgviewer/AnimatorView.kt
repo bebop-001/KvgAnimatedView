@@ -30,126 +30,39 @@ import androidx.core.content.ContextCompat
 class AnimatorView(context: Context, attrs: AttributeSet) :
         View(context, attrs)
 {
-    companion object {
-        // used for calculating display independent values.
-        private var charWidth = 0f
-        private var charHeight = 0f
+    // used for calculating display independent values.
+    private var charWidth = 0f
+    private var charHeight = 0f
 
-        // used to scale char to view size.
-        private lateinit var scaleMatrix: Matrix
+    // used to scale char to view size.
+    private lateinit var scaleMatrix: Matrix
 
-        private val charPathMeasure = PathMeasure()
+    private val charPathMeasure = PathMeasure()
 
-        // contains paths 'rendered' during the animation.
-        private val renderedCharPath = Path()
+    // contains paths 'rendered' during the animation.
+    private val renderedCharPath = Path()
 
-        private var strokePaths: Array<Path>? = null
-        private var strokeIdText: Array<PositionedTextInfo>? = null
-        private var charPath = Path()
+    private var strokePaths: Array<Path>? = null
+    private var strokeIdText: Array<PositionedTextInfo>? = null
+    private var charPath = Path()
 
-        private var distance = 0f //distance moved
+    private var distance = 0f //distance moved
 
-        private var pathLength = 0f // total length of the path.
+    private var pathLength = 0f // total length of the path.
 
-        // x/y coordinate of current point.
-        private val pos = FloatArray(2)
-        private var strokePathCounter = 0// path currently being rendered.
-        private var startTime = 0L
-        private var startNewLine = true
-
-        fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
-            val src = floatArrayOf(this.x, this.y)
-            val dst = floatArrayOf(0f,0f)
-            matrix.mapPoints(dst, src)
-            val rv = PositionedTextInfo(dst[0], dst[1], text)
-            // Log.d("putText", "$this -> $rv")
-            return rv
-        }
-        fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
-            drawText(text.text, text.x, text.y, paint)
-        }
-        private lateinit var gridPaint : Paint
-
-        // speed of animation is determined by number of steps.
-        // More steps per frame == faster animation.
-        private val speed = intArrayOf(3, 6, 9)
-        private var animateSteps = 0
-        fun setAnimateSpeed(speedIn: Int) {
-            animateSteps = speed[speedIn]
-        }
-        var viewWidth = 0f
-        var viewHeight = 0f
-        val positionedText = mutableListOf<PositionedTextInfo>()
-        // called from KanaAnimator to select our character.
-        fun setRenderCharacter(kp: KvgToAndroidPaths) {
-            if (kp.strokePaths == null || kp.strokeIdText == null) {
-                Log.d("setRenderChar", "stroke paths or text null")
-                return
-            }
-            // for normalize.
-            charWidth = kp.width
-            charHeight = kp.height
-            strokePaths = kp.strokePaths!!
-            strokeIdText = kp.strokeIdText!!
-
-            startNewLine = true
-            strokePathCounter = 0
-            renderedCharPath.reset()
-        }
-    }
-    // convert pix/font point for display independence
-    private fun Float.pxToDp(): Float {
-        var dp = this / resources.displayMetrics.density
-        // dp = 1 pixel if its zero to prevent divide by 0 error.
-        if (dp < 1) dp = 1f
-        return dp
-    }
-    private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
-    private fun Float.dpToPx(): Float {
-        return this * resources.displayMetrics.density
-    }
-    private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
-
-    private fun Canvas.renderGrid() {
-        val (left, top, right, bottom) =
-            arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
-        drawRect(RectF(left, top, right, bottom), gridPaint)
-        val h = viewHeight / 3
-        drawLine(left, h, right, h, gridPaint)
-        drawLine(left, 2 * h, right, 2 * h, gridPaint)
-        val w = viewWidth / 3
-        drawLine(w, top, w, bottom, gridPaint)
-        drawLine(2 * w, top, 2 * w, bottom, gridPaint)
-    }
-
-    // Wait for view size change and grab the measured size of the
-    // view.  Set the scale matrix based on the view size and scale
-    // the paths as necessary.
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        Log.d("onSizeChanged", "$w, $h, $oldw, $oldh")
-        // Needed to scale width/height to char sizes passed in.
-        viewWidth = w.toFloat()
-        viewHeight = h.toFloat()
-        scaleMatrix = Matrix()
-        scaleMatrix.setScale(
-            viewWidth/ charWidth, viewHeight/ charHeight,
-            0f, 0f)
-        for (i in strokePaths!!.indices) {
-            strokePaths!![i].transform(scaleMatrix)
-        }
-        strokePaths!!.map { charPath.addPath(it) }
-        strokeIdText!!.map{
-            positionedText.add(it.putText(scaleMatrix))
-        }
-    }
+    // x/y coordinate of current point.
+    private val pos = FloatArray(2)
+    private var strokePathCounter = 0// path currently being rendered.
+    private var startTime = 0L
+    private var startNewLine = true
 
     private val renderedCharPaint : Paint
     private val cursorPaint : Paint
     private val bgCharPaint : Paint
     private val textPaint : Paint
     private val textBgPaint : Paint
-    // one time initialization at start of first object.
+    private val gridPaint : Paint
+
     init{
         // Various paint objects used during render.
         // the character is rendered with this brush.
@@ -204,6 +117,93 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             style = Paint.Style.STROKE
         }
     }
+
+    fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
+        val src = floatArrayOf(this.x, this.y)
+        val dst = floatArrayOf(0f,0f)
+        matrix.mapPoints(dst, src)
+        val rv = PositionedTextInfo(dst[0], dst[1], text)
+        // Log.d("putText", "$this -> $rv")
+        return rv
+    }
+    fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
+        drawText(text.text, text.x, text.y, paint)
+    }
+
+    // speed of animation is determined by number of steps.
+    // More steps per frame == faster animation.
+    private val speed = intArrayOf(3, 6, 9)
+    private var animateSteps = 0
+    fun setAnimateSpeed(speedIn: Int) {
+        animateSteps = speed[speedIn]
+    }
+    var viewWidth = 0f
+    var viewHeight = 0f
+    val positionedText = mutableListOf<PositionedTextInfo>()
+    // called from KanaAnimator to select our character.
+    fun setRenderCharacter(kp: KvgToAndroidPaths) {
+        if (kp.strokePaths == null || kp.strokeIdText == null) {
+            Log.d("setRenderChar", "stroke paths or text null")
+            return
+        }
+        // for normalize.
+        charWidth = kp.width
+        charHeight = kp.height
+        strokePaths = kp.strokePaths!!
+        strokeIdText = kp.strokeIdText!!
+
+        startNewLine = true
+        strokePathCounter = 0
+        renderedCharPath.reset()
+    }
+    // convert pix/font point for display independence
+    private fun Float.pxToDp(): Float {
+        var dp = this / resources.displayMetrics.density
+        // dp = 1 pixel if its zero to prevent divide by 0 error.
+        if (dp < 1) dp = 1f
+        return dp
+    }
+    private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
+    private fun Float.dpToPx(): Float {
+        return this * resources.displayMetrics.density
+    }
+    private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
+
+    private fun Canvas.renderGrid() {
+        val (left, top, right, bottom) =
+            arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
+        drawRect(RectF(left, top, right, bottom), gridPaint)
+        val h = viewHeight / 3
+        drawLine(left, h, right, h, gridPaint)
+        drawLine(left, 2 * h, right, 2 * h, gridPaint)
+        val w = viewWidth / 3
+        drawLine(w, top, w, bottom, gridPaint)
+        drawLine(2 * w, top, 2 * w, bottom, gridPaint)
+    }
+
+    // Wait for view size change and grab the measured size of the
+    // view.  Set the scale matrix based on the view size and scale
+    // the paths as necessary.
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        Log.d("onSizeChanged", "$w, $h, $oldw, $oldh")
+        // Needed to scale width/height to char sizes passed in.
+        viewWidth = w.toFloat()
+        viewHeight = h.toFloat()
+        scaleMatrix = Matrix()
+        scaleMatrix.setScale(
+            viewWidth/ charWidth, viewHeight/ charHeight,
+            0f, 0f)
+        for (i in strokePaths!!.indices) {
+            strokePaths!![i].transform(scaleMatrix)
+        }
+        strokePaths!!.map { charPath.addPath(it) }
+        strokeIdText!!.map{
+            positionedText.add(it.putText(scaleMatrix))
+        }
+    }
+
+
 
 
     // render rate milliseconds. sets our frame rate.  This rate was chosen
