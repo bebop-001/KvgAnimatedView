@@ -23,6 +23,20 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 
+// our own personal exception.
+class KvgAnimateException(message:String) : Exception (message) {
+    /*
+    constructor(op:String, found:Int, expected:Int) :
+            this(String.format("op:%s expected %d args found %d",
+                op, found, expected))
+    constructor(renderChar:Char, isPathFile: Boolean, error:String) :
+            this(String.format("KvgToAndroidPaths filed for \"%c\" %s file:" +
+                    "Exception:%s", renderChar,
+                if (isPathFile) "path file " else "svg file ",
+                error))
+     */
+}
+
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
 // See https://c05mic.com/2012/03/23/animating-a-bitmap-using-path-and-pathmeasure-android/
@@ -30,6 +44,10 @@ import androidx.core.content.ContextCompat
 class AnimatorView(context: Context, attrs: AttributeSet) :
         View(context, attrs)
 {
+    // layout width & heigtht from object attributes.
+    val layoutHeight : Float
+    val layoutWidth : Float
+
     // used for calculating display independent values.
     private var charWidth = 0f
     private var charHeight = 0f
@@ -63,7 +81,41 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val textBgPaint : Paint
     private val gridPaint : Paint
 
+    // convert pix/font point for display independence
+    private fun Float.pxToDp(): Float {
+        var dp = this / resources.displayMetrics.density
+        // dp = 1 pixel if its zero to prevent divide by 0 error.
+        if (dp < 1) dp = 1f
+        return dp
+    }
+    private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
+    private fun Float.dpToPx(): Float {
+        return this * resources.displayMetrics.density
+    }
+    private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
+
+    private fun String?.attrDpToPix() : Float {
+        if (this != null) {
+            val match = "^(\\d+(?:.\\d+)*)dip$".toRegex().find(this)
+            if (match != null) {
+                return (match.groupValues[1].toFloat()).dpToPx()
+            }
+        }
+        throw KvgAnimateException(
+            this ?: "null" + ": not valid dp value.  " +
+            "Please assign AnimatorView layout_width " +
+            "and layout_height in dp units.")
+    }
     init{
+        val androidNameSpace = "http://schemas.android.com/apk/res/android"
+        layoutHeight = attrs
+            .getAttributeValue(androidNameSpace, "layout_height")
+            .attrDpToPix()
+        layoutWidth = attrs
+            .getAttributeValue(androidNameSpace, "layout_width")
+            .attrDpToPix()
+        Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
+
         // Various paint objects used during render.
         // the character is rendered with this brush.
         renderedCharPaint = Paint()
@@ -117,7 +169,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             style = Paint.Style.STROKE
         }
     }
-
     fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
         val src = floatArrayOf(this.x, this.y)
         val dst = floatArrayOf(0f,0f)
@@ -137,8 +188,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     fun setAnimateSpeed(speedIn: Int) {
         animateSteps = speed[speedIn]
     }
-    var viewWidth = 0f
-    var viewHeight = 0f
     val positionedText = mutableListOf<PositionedTextInfo>()
     // called from KanaAnimator to select our character.
     fun setRenderCharacter(kp: KvgToAndroidPaths) {
@@ -155,44 +204,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         startNewLine = true
         strokePathCounter = 0
         renderedCharPath.reset()
-    }
-    // convert pix/font point for display independence
-    private fun Float.pxToDp(): Float {
-        var dp = this / resources.displayMetrics.density
-        // dp = 1 pixel if its zero to prevent divide by 0 error.
-        if (dp < 1) dp = 1f
-        return dp
-    }
-    private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
-    private fun Float.dpToPx(): Float {
-        return this * resources.displayMetrics.density
-    }
-    private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
 
-    private fun Canvas.renderGrid() {
-        val (left, top, right, bottom) =
-            arrayOf(4f, 4f, viewWidth - 4f, viewHeight - 4f)
-        drawRect(RectF(left, top, right, bottom), gridPaint)
-        val h = viewHeight / 3
-        drawLine(left, h, right, h, gridPaint)
-        drawLine(left, 2 * h, right, 2 * h, gridPaint)
-        val w = viewWidth / 3
-        drawLine(w, top, w, bottom, gridPaint)
-        drawLine(2 * w, top, 2 * w, bottom, gridPaint)
-    }
-
-    // Wait for view size change and grab the measured size of the
-    // view.  Set the scale matrix based on the view size and scale
-    // the paths as necessary.
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        Log.d("onSizeChanged", "$w, $h, $oldw, $oldh")
-        // Needed to scale width/height to char sizes passed in.
-        viewWidth = w.toFloat()
-        viewHeight = h.toFloat()
         scaleMatrix = Matrix()
         scaleMatrix.setScale(
-            viewWidth/ charWidth, viewHeight/ charHeight,
+            layoutWidth/ charWidth, layoutHeight/ charHeight,
             0f, 0f)
         for (i in strokePaths!!.indices) {
             strokePaths!![i].transform(scaleMatrix)
@@ -203,8 +218,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
     }
 
-
-
+    private fun Canvas.renderGrid() {
+        val (left, top, right, bottom) =
+            arrayOf(4f, 4f, layoutWidth - 4f, layoutHeight - 4f)
+        drawRect(RectF(left, top, right, bottom), gridPaint)
+        val h = layoutHeight / 3
+        drawLine(left, h, right, h, gridPaint)
+        drawLine(left, 2 * h, right, 2 * h, gridPaint)
+        val w = layoutWidth / 3
+        drawLine(w, top, w, bottom, gridPaint)
+        drawLine(2 * w, top, 2 * w, bottom, gridPaint)
+    }
 
     // render rate milliseconds. sets our frame rate.  This rate was chosen
     // because my oldest device (android 4.4) could handle it.
