@@ -106,6 +106,19 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             "Please assign AnimatorView layout_width " +
             "and layout_height in dp units.")
     }
+    private fun String?.attrSpToPix() : Float {
+        if (this != null) {
+            val match = "^(\\d+(?:.\\d+)*)sp$".toRegex().find(this)
+            if (match != null) {
+                val sp = match.groupValues[1].toFloat() *
+                    resources.displayMetrics.scaledDensity
+                return sp
+            }
+        }
+        throw KvgAnimateException(
+            this ?: "null" + ": not valid sp value.  " +
+            "Please assign AnimatorView text_size in sp units." )
+    }
     init{
         val androidNameSpace = "http://schemas.android.com/apk/res/android"
         layoutHeight = attrs
@@ -114,6 +127,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         layoutWidth = attrs
             .getAttributeValue(androidNameSpace, "layout_width")
             .attrDpToPix()
+        val appNameSpace = "http://schemas.android.com/apk/res-auto"
+        val textSize = attrs.getAttributeValue(appNameSpace, "text_size")
+            .attrSpToPix()
         Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
 
         // Various paint objects used during render.
@@ -140,14 +156,14 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         textPaint = Paint()
         with(textPaint) {
             color = ContextCompat.getColor(context, R.color.text_color)
-            setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
+            setTextSize(textSize)
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
         textBgPaint = Paint()
         with(textBgPaint) {
             color = ContextCompat.getColor(context, R.color.text_bg_color)
             maskFilter = BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
-            setTextSize(resources.getDimension(R.dimen.animateNotationTextSize))
+            setTextSize(textSize)
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
         // used to paint a blured version of the character
