@@ -47,6 +47,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // layout width & heigtht from object attributes.
     val layoutHeight : Float
     val layoutWidth : Float
+    val animateStrokeWidth : Float
+    val annotateTextSize : Float
 
     // used for calculating display independent values.
     private var charWidth = 0f
@@ -96,7 +98,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
     private fun String?.attrDpToPix() : Float {
         if (this != null) {
-            val match = "^(\\d+(?:.\\d+)*)dip$".toRegex().find(this)
+            val match = "^(\\d+(?:.\\d+)*)(?:dip|dp)$".toRegex().find(this)
             if (match != null) {
                 return (match.groupValues[1].toFloat()).dpToPx()
             }
@@ -111,7 +113,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             val match = "^(\\d+(?:.\\d+)*)sp$".toRegex().find(this)
             if (match != null) {
                 val sp = match.groupValues[1].toFloat() *
-                    resources.displayMetrics.scaledDensity
+                        resources.displayMetrics.scaledDensity
                 return sp
             }
         }
@@ -128,7 +130,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             .getAttributeValue(androidNameSpace, "layout_width")
             .attrDpToPix()
         val appNameSpace = "http://schemas.android.com/apk/res-auto"
-        val textSize = attrs.getAttributeValue(appNameSpace, "text_size")
+        animateStrokeWidth = attrs.getAttributeValue(appNameSpace, "animate_stroke_width")
+            .attrDpToPix()
+        annotateTextSize = attrs.getAttributeValue(appNameSpace, "text_size")
             .attrSpToPix()
         Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
 
@@ -137,7 +141,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         renderedCharPaint = Paint()
         with(renderedCharPaint) {
             color = ContextCompat.getColor(context, R.color.rendered_char)
-            strokeWidth = 10f.dpToPx()
+            strokeWidth = animateStrokeWidth
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
@@ -156,26 +160,27 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         textPaint = Paint()
         with(textPaint) {
             color = ContextCompat.getColor(context, R.color.text_color)
-            setTextSize(textSize)
+            setTextSize(annotateTextSize)
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
         textBgPaint = Paint()
         with(textBgPaint) {
             color = ContextCompat.getColor(context, R.color.text_bg_color)
-            maskFilter = BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
-            setTextSize(textSize)
+            maskFilter = BlurMaskFilter(0.5f * annotateTextSize, BlurMaskFilter.Blur.NORMAL)
+            setTextSize(annotateTextSize)
             setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
         // used to paint a blured version of the character
         // so user can see what's being painted.
         bgCharPaint = Paint()
         with(bgCharPaint) {
+            val bgStrokeWidth = animateStrokeWidth * 0.5f
             color = ContextCompat.getColor(context, R.color.rendered_char_bg)
-            strokeWidth = 6f.dpToPx()
+            strokeWidth = bgStrokeWidth
             style = Paint.Style.STROKE
             // set android:hardwareAccelerated="false" for activity
             // in AndroidManifest.xml for this to work.
-            maskFilter = BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
+            maskFilter = BlurMaskFilter(bgStrokeWidth, BlurMaskFilter.Blur.NORMAL)
         }
         // used to paint the grid.
         gridPaint = Paint()
@@ -291,7 +296,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     }
                     else {
                         renderedCharPath.lineTo(pos[0], pos[1])
-                        canvas.drawCircle(pos[0], pos[1], 3f.dpToPx(), cursorPaint)
+                        canvas.drawCircle(pos[0], pos[1],
+                            0.5f * animateStrokeWidth, cursorPaint)
                         // Catch end points as we go.
                     }
                 }
@@ -317,10 +323,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     canvas.renderText(ti, textBgPaint)
                     canvas.renderText(ti, textPaint)
                 }
-                canvas.drawCircle(pos[0], pos[1], 3f.dpToPx(), textPaint)
+                canvas.drawCircle(pos[0], pos[1],
+                    0.5f * animateStrokeWidth, textPaint)
             }
             else {
-                canvas.drawCircle(pos[0], pos[1], 7f.dpToPx(), cursorPaint)
+                canvas.drawCircle(pos[0], pos[1],
+                    0.5f * animateStrokeWidth, cursorPaint)
             }
             // Log.d("draw", "${pos[0]},${pos[1]}")
         }

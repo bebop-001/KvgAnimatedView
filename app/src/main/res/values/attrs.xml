@@ -24,5 +24,6 @@
     -->
     <declare-styleable name="AnimatorView">
         <attr name="text_size" format="string" />
+        <attr name="animate_stroke_width" format="string" />
     </declare-styleable>
 </resources>
