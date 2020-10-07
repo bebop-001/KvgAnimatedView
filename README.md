@@ -53,6 +53,18 @@ Have Fun<br>
 Steve S.<br>
 Oct. 2, 2020
 
+Oct. 7, 2020<br>
+The following attributes were added:
+* app:animate_background
+* app:animate_stroke_width
+* app:animate_stroke_color
+* app:animate_cursor_color
+* app:grid_color
+* app:annotate_text_size
+* app:annotate_text_color
+
+Use these in animator_view.xml to over-ride the defaults.
+
 <img src="./images/Screenshot1.png" 
 	alt="App screenshot"
 	width="700" />
