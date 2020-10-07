@@ -44,11 +44,16 @@ class KvgAnimateException(message:String) : Exception (message) {
 class AnimatorView(context: Context, attrs: AttributeSet) :
         View(context, attrs)
 {
-    // layout width & heigtht from object attributes.
-    val layoutHeight : Float
-    val layoutWidth : Float
-    val animateStrokeWidth : Float
-    val annotateTextSize : Float
+    // Attributes.
+    val layoutHeight : Float        // android:layout_width
+    val layoutWidth : Float         // android:layout_height
+    val animateStrokeWidth : Float  // app:animate_stroke_width
+    val animateStrokeColor : Int    // app:animate_stroke_color
+    val cursorColor: Int            // app:animate_cursor_color
+    val gridColor: Int              // app:grid_color
+    val backgroundColor: Int        // android:background
+    val annotateTextSize : Float    // app:annotate_text_size
+    val annotateTextColor : Int     // app:annotate_text_color
 
     // used for calculating display independent values.
     private var charWidth = 0f
@@ -76,12 +81,14 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private var startTime = 0L
     private var startNewLine = true
 
-    private val renderedCharPaint : Paint
-    private val cursorPaint : Paint
-    private val bgCharPaint : Paint
-    private val textPaint : Paint
-    private val textBgPaint : Paint
-    private val gridPaint : Paint
+    private val renderedCharPaint : Paint   // the stroked character
+    private val ghostCharPaint : Paint      // blured character behind stroked char.
+    private val cursorPaint : Paint         // a cursor to highlight the stroke.
+    private val textPaint : Paint           // annotation text for stroke order.
+    private val textBgPaint : Paint         // blured text behind annotation in
+                                            // same color as background to make text
+                                            // standout
+    private val gridPaint : Paint           // the grid
 
     // convert pix/font point for display independence
     private fun Float.pxToDp(): Float {
@@ -96,19 +103,25 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     }
     private fun Int.dpToPx() : Float = this.toFloat().pxToDp()
 
-    private fun String?.attrDpToPix() : Float {
+    private fun String?.attrDpToPix(default : String = "") : Float {
         if (this != null) {
             val match = "^(\\d+(?:.\\d+)*)(?:dip|dp)$".toRegex().find(this)
             if (match != null) {
                 return (match.groupValues[1].toFloat()).dpToPx()
             }
         }
+        else if (default.isNotEmpty()) {
+            default.attrDpToPix()
+        }
         throw KvgAnimateException(
             this ?: "null" + ": not valid dp value.  " +
             "Please assign AnimatorView layout_width " +
             "and layout_height in dp units.")
     }
-    private fun String?.attrSpToPix() : Float {
+    // use if default is a resource id
+    private fun String?.attrDpToPix(resId : Int) : Float =
+        this.attrDpToPix("@$resId")
+    private fun String?.attrSpToPix(default : String = "") : Float {
         if (this != null) {
             val match = "^(\\d+(?:.\\d+)*)sp$".toRegex().find(this)
             if (match != null) {
@@ -117,11 +130,47 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 return sp
             }
         }
+        else if (default.isNotEmpty()) {
+            default.attrSpToPix()
+        }
         throw KvgAnimateException(
             this ?: "null" + ": not valid sp value.  " +
             "Please assign AnimatorView text_size in sp units." )
     }
+    // use if default is a resource id
+    private fun String?.attrSpToPix(resId : Int) : Float =
+        this.attrSpToPix("@$resId")
+
+    private fun String?.attrToColor(default:String = "") : Int {
+        if (this != null) {
+            val match = "^(@|#)([0-9a-f]+)$"
+                .toRegex(RegexOption.IGNORE_CASE)
+                .find(this)
+            if (match != null) {
+                val (op, value) = match.destructured
+                var color =
+                if (op == "@") {
+                    ContextCompat.getColor(context, value.toInt())
+                }
+                else {
+                    // #hex format
+                    Color.parseColor(this)
+                }
+                return color
+            }
+        }
+        else if (default.isNotEmpty()) {
+            default.attrToColor()
+        }
+        throw KvgAnimateException(
+            this ?: "null" + ": not valid color value or resource id.")
+    }
+    // use if default is a resource id
+    private fun String?.attrToColor(resId : Int) : Int =
+        this.attrToColor("@$resId")
+
     init{
+        // set values from xml attributes.
         val androidNameSpace = "http://schemas.android.com/apk/res/android"
         layoutHeight = attrs
             .getAttributeValue(androidNameSpace, "layout_height")
@@ -129,63 +178,82 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         layoutWidth = attrs
             .getAttributeValue(androidNameSpace, "layout_width")
             .attrDpToPix()
+        backgroundColor = attrs.
+            getAttributeValue(androidNameSpace, "background")
+            .attrToColor()
+
         val appNameSpace = "http://schemas.android.com/apk/res-auto"
         animateStrokeWidth = attrs.getAttributeValue(appNameSpace, "animate_stroke_width")
             .attrDpToPix()
-        annotateTextSize = attrs.getAttributeValue(appNameSpace, "text_size")
+
+        animateStrokeColor = attrs.getAttributeValue(appNameSpace, "animate_stroke_color")
+            .attrToColor()
+        cursorColor = attrs.getAttributeValue(appNameSpace, "animate_cursor_color")
+            .attrToColor()
+
+        annotateTextSize = attrs.getAttributeValue(appNameSpace, "annotate_text_size")
             .attrSpToPix()
+        annotateTextColor = attrs.getAttributeValue(appNameSpace, "annotate_text_color")
+            .attrToColor()
+
+        gridColor = attrs.getAttributeValue(appNameSpace, "grid_color")
+            .attrToColor()
+
         Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
 
         // Various paint objects used during render.
         // the character is rendered with this brush.
         renderedCharPaint = Paint()
         with(renderedCharPaint) {
-            color = ContextCompat.getColor(context, R.color.rendered_char)
+            color = animateStrokeColor
             strokeWidth = animateStrokeWidth
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
-        // we put a cursor on the char in this color
-        // to show the movement of the brush.
-        cursorPaint = Paint()
-        with(cursorPaint) {
-            color = ContextCompat.getColor(context, R.color.pointer_color)
-            strokeWidth = 1f.dpToPx()
-            style = Paint.Style.FILL_AND_STROKE
-            maskFilter = setMaskFilter(
-                BlurMaskFilter(5f.dpToPx(), BlurMaskFilter.Blur.NORMAL)
-            )
-        }
-        textPaint = Paint()
-        with(textPaint) {
-            color = ContextCompat.getColor(context, R.color.text_color)
-            setTextSize(annotateTextSize)
-            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
-        }
-        textBgPaint = Paint()
-        with(textBgPaint) {
-            color = ContextCompat.getColor(context, R.color.text_bg_color)
-            maskFilter = BlurMaskFilter(0.5f * annotateTextSize, BlurMaskFilter.Blur.NORMAL)
-            setTextSize(annotateTextSize)
-            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
-        }
         // used to paint a blured version of the character
         // so user can see what's being painted.
-        bgCharPaint = Paint()
-        with(bgCharPaint) {
+        ghostCharPaint = Paint()
+        with(ghostCharPaint) {
             val bgStrokeWidth = animateStrokeWidth * 0.5f
-            color = ContextCompat.getColor(context, R.color.rendered_char_bg)
+            color = animateStrokeColor
             strokeWidth = bgStrokeWidth
             style = Paint.Style.STROKE
             // set android:hardwareAccelerated="false" for activity
             // in AndroidManifest.xml for this to work.
             maskFilter = BlurMaskFilter(bgStrokeWidth, BlurMaskFilter.Blur.NORMAL)
         }
+
+        // we put a cursor on the char in this color
+        // to show the movement of the brush.
+        cursorPaint = Paint()
+        with(cursorPaint) {
+            color = cursorColor
+            strokeWidth = animateStrokeWidth * 0.1f
+            style = Paint.Style.FILL_AND_STROKE
+            maskFilter = setMaskFilter(
+                BlurMaskFilter(
+                    animateStrokeWidth * 0.5f, BlurMaskFilter.Blur.NORMAL)
+            )
+        }
+        textPaint = Paint()
+        with(textPaint) {
+            color = annotateTextColor
+            textSize = annotateTextSize
+            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
+        }
+        textBgPaint = Paint()
+        with(textBgPaint) {
+            color = backgroundColor
+            maskFilter = BlurMaskFilter(3f.dpToPx(), android.graphics.BlurMaskFilter.Blur.SOLID)
+            textSize = annotateTextSize
+            setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD))
+        }
+
         // used to paint the grid.
         gridPaint = Paint()
         with(gridPaint) {
-            color = ContextCompat.getColor(context, R.color.grid_color)
+            color = gridColor
             strokeWidth = 3f.dpToPx()
             style = Paint.Style.STROKE
         }
@@ -267,7 +335,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
 
         // draw the ghost char and grid.
-        canvas.drawPath(charPath, bgCharPaint)
+        canvas.drawPath(charPath, ghostCharPaint)
         canvas.renderGrid()
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
