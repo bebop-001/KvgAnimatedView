@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("UnnecessaryVariable", "unused", "unused", "unused", "unused", "unused")
+
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
@@ -20,7 +22,6 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 
 // our own personal exception.
@@ -45,15 +46,15 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         View(context, attrs)
 {
     // Attributes.
-    val layoutHeight : Float        // android:layout_width
-    val layoutWidth : Float         // android:layout_height
-    val animateStrokeWidth : Float  // app:animate_stroke_width
-    val animateStrokeColor : Int    // app:animate_stroke_color
-    val cursorColor: Int            // app:animate_cursor_color
-    val gridColor: Int              // app:grid_color
-    val backgroundColor: Int        // android:background
-    val annotateTextSize : Float    // app:annotate_text_size
-    val annotateTextColor : Int     // app:annotate_text_color
+    private val layoutHeight : Float        // android:layout_width
+    private val layoutWidth : Float         // android:layout_height
+    private val animateStrokeWidth : Float  // app:animate_stroke_width
+    private val animateStrokeColor : Int    // app:animate_stroke_color
+    private val cursorColor: Int            // app:animate_cursor_color
+    private val gridColor: Int              // app:grid_color
+    private val backgroundColor: Int        // android:background
+    private val annotateTextSize : Float    // app:annotate_text_size
+    private val annotateTextColor : Int     // app:annotate_text_color
 
     // used for calculating display independent values.
     private var charWidth = 0f
@@ -125,9 +126,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         if (this != null) {
             val match = "^(\\d+(?:.\\d+)*)sp$".toRegex().find(this)
             if (match != null) {
-                val sp = match.groupValues[1].toFloat() *
+                return match.groupValues[1].toFloat() *
                         resources.displayMetrics.scaledDensity
-                return sp
             }
         }
         else if (default.isNotEmpty()) {
@@ -143,12 +143,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
     private fun String?.attrToColor(default:String = "") : Int {
         if (this != null) {
-            val match = "^(@|#)([0-9a-f]+)$"
+            val match = "^([@#])([0-9a-f]+)$"
                 .toRegex(RegexOption.IGNORE_CASE)
                 .find(this)
             if (match != null) {
                 val (op, value) = match.destructured
-                var color =
+                val color =
                 if (op == "@") {
                     ContextCompat.getColor(context, value.toInt())
                 }
@@ -245,9 +245,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         textBgPaint = Paint()
         with(textBgPaint) {
             color = backgroundColor
-            maskFilter = BlurMaskFilter(3f.dpToPx(), android.graphics.BlurMaskFilter.Blur.SOLID)
+            maskFilter = BlurMaskFilter(3f.dpToPx(), BlurMaskFilter.Blur.SOLID)
             textSize = annotateTextSize
-            setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD))
+            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD))
         }
 
         // used to paint the grid.
@@ -258,7 +258,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             style = Paint.Style.STROKE
         }
     }
-    fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
+    private fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
         val src = floatArrayOf(this.x, this.y)
         val dst = floatArrayOf(0f,0f)
         matrix.mapPoints(dst, src)
@@ -266,7 +266,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // Log.d("putText", "$this -> $rv")
         return rv
     }
-    fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
+    private fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
         drawText(text.text, text.x, text.y, paint)
     }
 
@@ -277,7 +277,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     fun setAnimateSpeed(speedIn: Int) {
         animateSteps = speed[speedIn]
     }
-    val positionedText = mutableListOf<PositionedTextInfo>()
+    private val positionedText = mutableListOf<PositionedTextInfo>()
     // called from KanaAnimator to select our character.
     fun setRenderCharacter(kp: KvgToAndroidPaths) {
         if (kp.strokePaths == null || kp.strokeIdText == null) {
