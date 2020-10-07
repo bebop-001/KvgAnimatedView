@@ -16,28 +16,34 @@
 -->
 <RelativeLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:layout_width="fill_parent"
 	android:layout_height="fill_parent"
 	android:background="#08ffffff"
 	android:id="@+id/animate_layout">
-
     <FrameLayout
     	android:layout_width="wrap_content"
     	android:layout_height="wrap_content"
     	android:layout_centerInParent="true"
     	android:background="@android:color/white"
 		>
-    	
-        <com.kana_tutor.kvgviewer.AnimatorView
-        	android:id="@+id/animator_view"
+        <!-- As built only the defaultcolors and sizes are
+        	 used.  The following attributes can be used to
+             over-ride the defaults:
+             app:animate_background
+             app:animate_stroke_width
+             app:animate_stroke_color
+             app:animate_cursor_color
+             app:grid_color
+             app:annotate_text_size
+             app:annotate_text_color
+
+             NOTE! the layout must also contain
+             xmlns:app="http://schemas.android.com/apk/res-auto"
+             to pull in the app namespace. -->
+		<com.kana_tutor.kvgviewer.AnimatorView
+			android:id="@+id/animator_view"
 			android:layout_width="200dp"
 			android:layout_height="200dp"
-			app:text_size="20sp"
-			app:animate_stroke_width="8dp"
-			android:background="@color/animate_bg"
-		/>
-    	
+			/>
     </FrameLayout>
-
 </RelativeLayout>

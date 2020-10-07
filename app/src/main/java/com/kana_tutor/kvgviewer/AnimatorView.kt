@@ -52,7 +52,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val animateStrokeColor : Int    // app:animate_stroke_color
     private val cursorColor: Int            // app:animate_cursor_color
     private val gridColor: Int              // app:grid_color
-    private val backgroundColor: Int        // android:background
+    private val backgroundColor: Int        // app:animate_background
     private val annotateTextSize : Float    // app:annotate_text_size
     private val annotateTextColor : Int     // app:annotate_text_color
 
@@ -90,6 +90,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                                             // same color as background to make text
                                             // standout
     private val gridPaint : Paint           // the grid
+    private val bgPaint : Paint             // the background.
 
     // convert pix/font point for display independence
     private fun Float.pxToDp(): Float {
@@ -112,7 +113,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
         }
         else if (default.isNotEmpty()) {
-            default.attrDpToPix()
+            return default.attrDpToPix()
         }
         throw KvgAnimateException(
             this ?: "null" + ": not valid dp value.  " +
@@ -131,7 +132,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
         }
         else if (default.isNotEmpty()) {
-            default.attrSpToPix()
+            return default.attrSpToPix()
         }
         throw KvgAnimateException(
             this ?: "null" + ": not valid sp value.  " +
@@ -160,7 +161,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             }
         }
         else if (default.isNotEmpty()) {
-            default.attrToColor()
+            return default.attrToColor()
         }
         throw KvgAnimateException(
             this ?: "null" + ": not valid color value or resource id.")
@@ -178,26 +179,26 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         layoutWidth = attrs
             .getAttributeValue(androidNameSpace, "layout_width")
             .attrDpToPix()
-        backgroundColor = attrs.
-            getAttributeValue(androidNameSpace, "background")
-            .attrToColor()
 
         val appNameSpace = "http://schemas.android.com/apk/res-auto"
+        backgroundColor = attrs.getAttributeValue(appNameSpace, "animate_background")
+            .attrToColor("#FFFFF0")
+
         animateStrokeWidth = attrs.getAttributeValue(appNameSpace, "animate_stroke_width")
-            .attrDpToPix()
+            .attrDpToPix("10dp")
 
         animateStrokeColor = attrs.getAttributeValue(appNameSpace, "animate_stroke_color")
-            .attrToColor()
+            .attrToColor("#0D47A1")
         cursorColor = attrs.getAttributeValue(appNameSpace, "animate_cursor_color")
-            .attrToColor()
+            .attrToColor(android.R.color.holo_orange_dark)
 
         annotateTextSize = attrs.getAttributeValue(appNameSpace, "annotate_text_size")
-            .attrSpToPix()
+            .attrSpToPix("20sp")
         annotateTextColor = attrs.getAttributeValue(appNameSpace, "annotate_text_color")
-            .attrToColor()
+            .attrToColor("#42A5F5")
 
         gridColor = attrs.getAttributeValue(appNameSpace, "grid_color")
-            .attrToColor()
+            .attrToColor(android.R.color.holo_blue_dark)
 
         Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
 
@@ -256,6 +257,11 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             color = gridColor
             strokeWidth = 3f.dpToPx()
             style = Paint.Style.STROKE
+        }
+        bgPaint = Paint()
+        with (bgPaint) {
+            color = backgroundColor
+            style = Paint.Style.FILL
         }
     }
     private fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
@@ -328,6 +334,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
+        canvas.drawPaint(bgPaint)
         if (strokePaths == null || strokeIdText == null) {
             Log.d("AnimatorView", "onDraw called with null paths or text")
             canvas.renderGrid()

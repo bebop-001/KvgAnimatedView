@@ -25,5 +25,13 @@
     <declare-styleable name="AnimatorView">
         <attr name="text_size" format="string" />
         <attr name="animate_stroke_width" format="string" />
+        <attr name="animate_stroke_color" format="color" />
+        <attr name="animate_cursor_color" format="color" />
+
+        <attr name="annotate_text_size" format="dimension" />
+        <attr name="annotate_text_color" format="color" />
+
+        <attr name="grid_color" format="color" />
+        <attr name="animate_background" format="color" />
     </declare-styleable>
 </resources>
