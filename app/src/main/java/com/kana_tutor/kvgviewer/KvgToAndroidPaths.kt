@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 @file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection", "LocalVariableName", "CanBeVal",
-    "CascadeIf"
+    "CascadeIf", "ObjectPropertyName"
 )
 
 package com.kana_tutor.kvgviewer
@@ -149,6 +149,11 @@ fun readPathFile(reader:BufferedReader) :
     }
     return Pair(pathInfo.toTypedArray(),textInfo.toTypedArray())
 }
+var _matchResult : MatchResult? = null
+infix fun Regex._find(str : String) : Boolean {
+    _matchResult = this.find(str)
+    return _matchResult != null
+}
 val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
 val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
 const val tr = "^\\s*<text.*matrix\\([^)]+" +  // text starts with "<text transform="
@@ -163,7 +168,6 @@ fun readSvgFile(reader: BufferedReader) :
     val pathInfo = mutableListOf<String>()
     val textInfo = mutableListOf<PositionedTextInfo>()
     var lineCounter = 0
-    var matchResult : MatchResult?
     var inXmlComment = false
     val commentOpen = "<!--".toRegex()
     val commentClose = "-->".toRegex()
@@ -172,27 +176,26 @@ fun readSvgFile(reader: BufferedReader) :
         line = reader.readLine()
         lineCounter++
         Log.d("lineCounter", "$lineCounter")
-        if (line.isNullOrEmpty())
-            continue
-        else if (inXmlComment) {
-            if (commentClose.matches(line)) {
-                inXmlComment = false
+        when {
+            line.isNullOrEmpty() -> continue
+            inXmlComment -> {
+                if (commentClose.matches(line)) {
+                    inXmlComment = false
+                }
             }
-            continue
-        } else if (commentOpen.matches(line)) {
-            inXmlComment = true
-            continue
-        } else if (pathRegex.find(line).also { matchResult = it } != null) {
-            pathInfo.add(matchResult!!.groupValues[1])
-        } else if (widthHeightRegex.find(line).also { matchResult = it } != null) {
-            val (width, height) = matchResult!!.destructured
-            pathInfo.add("$width $height")
-        } else if (textRegex.find(line).also { matchResult = it } != null) {
-            // text is <text, a translation matrix, then text.
-            // I'm rerpresenting that with 'x$matrix:$text where matrix is the
-            // comma separated values from the matrix
-            val (x, y, text) = matchResult!!.destructured
-            textInfo.add(PositionedTextInfo(x.toFloat(), y.toFloat(), text))
+            commentOpen.matches(line) -> inXmlComment = true
+            pathRegex._find(line) -> pathInfo.add(_matchResult!!.groupValues[1])
+            widthHeightRegex._find(line) -> {
+                val (width, height) = _matchResult!!.destructured
+                pathInfo.add("$width $height")
+            }
+            textRegex._find(line) -> {
+                // text is <text, a translation matrix, then text.
+                // I'm rerpresenting that with 'x$matrix:$text where matrix is the
+                // comma separated values from the matrix
+                val (x, y, text) = _matchResult!!.destructured
+                textInfo.add(PositionedTextInfo(x.toFloat(), y.toFloat(), text))
+            }
         }
     } while (line != null)
     Log.d("lineCounter", "got here")
@@ -200,7 +203,7 @@ fun readSvgFile(reader: BufferedReader) :
 }
 
 const val USE_PATH_FILES = false
-class KvgToAndroidPaths(context: Context, val renderChar: Char) {
+class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
     var strokePaths : Array<Path>? = null
     var strokeIdText : Array<PositionedTextInfo>? = null
     var width = 0f
@@ -226,7 +229,6 @@ class KvgToAndroidPaths(context: Context, val renderChar: Char) {
     private fun svgInfoToGraphicInfo(svgInfo : Array<String>)
             : Array<Path>
     {
-        var matchResult : MatchResult? = null
         var sequenceMatch : Sequence<MatchResult>? = null
         fun Regex.sequenceFind(string:String) : Boolean {
             sequenceMatch = this.findAll(string)
@@ -237,10 +239,8 @@ class KvgToAndroidPaths(context: Context, val renderChar: Char) {
             var line = l
             // for .pat files, first char is char for file.
             // discard for now.
-            if ("^[^\\u0000-\\u007F]\\s+(.*)".toRegex()
-                    .find(line)
-                    .also{matchResult} != null) {
-                line = matchResult!!.groupValues[2]
+            if ("^[^\\u0000-\\u007F]\\s+(.*)".toRegex()_find(line)) {
+                line = _matchResult!!.groupValues[2]
             }
             if (width == 0f) {
                 if ("\\d+".toRegex().sequenceFind(line)) {
