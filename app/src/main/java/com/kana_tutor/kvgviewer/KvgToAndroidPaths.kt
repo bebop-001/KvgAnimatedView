@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 @file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection", "LocalVariableName", "CanBeVal",
-    "CascadeIf", "ObjectPropertyName"
+    "CascadeIf", "ObjectPropertyName", "FunctionName"
 )
 
 package com.kana_tutor.kvgviewer
@@ -165,19 +165,22 @@ val textRegex = tr.toRegex()
 fun readSvgFile(reader: BufferedReader) :
         Pair<Array<String>,Array<PositionedTextInfo>>
 {
+    var line = ""
+    fun BufferedReader.nextLine() : Boolean {
+        val l  = this.readLine()
+        line = l ?: ""
+        return l != null
+    }
     val pathInfo = mutableListOf<String>()
     val textInfo = mutableListOf<PositionedTextInfo>()
     var lineCounter = 0
     var inXmlComment = false
     val commentOpen = "<!--".toRegex()
     val commentClose = "-->".toRegex()
-    var line : String?
-    do {
-        line = reader.readLine()
+    while (reader.nextLine()) {
         lineCounter++
-        Log.d("lineCounter", "$lineCounter")
         when {
-            line.isNullOrEmpty() -> continue
+            line.isEmpty() -> continue
             inXmlComment -> {
                 if (commentClose.matches(line)) {
                     inXmlComment = false
@@ -197,8 +200,7 @@ fun readSvgFile(reader: BufferedReader) :
                 textInfo.add(PositionedTextInfo(x.toFloat(), y.toFloat(), text))
             }
         }
-    } while (line != null)
-    Log.d("lineCounter", "got here")
+    }
     return Pair(pathInfo.toTypedArray(),textInfo.toTypedArray())
 }
 
