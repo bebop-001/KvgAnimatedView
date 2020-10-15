@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection", "LocalVariableName")
+@file:Suppress("LiftReturnOrAssignment", "SpellCheckingInspection", "LocalVariableName", "CanBeVal",
+    "CascadeIf"
+)
 
 package com.kana_tutor.kvgviewer
 
@@ -28,9 +30,9 @@ import kotlin.text.RegexOption.IGNORE_CASE
 // our own personal exception.
 class SvgConvertException(message:String)
     : Exception (message) {
-    constructor(op:String, found:Int, expected:Int) :
-            this(String.format("op:%s expected %d args found %d",
-                op, found, expected))
+    constructor(op:String, found:Int, expected:Int, segment:String) :
+            this(String.format("op:%s expected %d args found %d, segment:%s",
+                op, found, expected, segment))
     constructor(renderChar:Char, isPathFile: Boolean, error:String) :
             this(String.format("KvgToAndroidPaths filed for \"%c\" %s file:" +
                     "Exception:%s", renderChar,
@@ -55,7 +57,8 @@ private class SvgPath : Path() {
         // expected size.
         fun FloatArray.check(op : String,  expected:Int) : FloatArray {
             if (this.size != expected)
-                throw SvgConvertException(op, expected, this.size)
+                throw SvgConvertException(op, expected, this.size,
+                    "$op${this.joinToString(",")}")
             return this
         }
         // because of "s" svg shorthand bezier operator, it's easier
@@ -69,7 +72,7 @@ private class SvgPath : Path() {
             return this
         }
 
-        // Log.d("convert", "$op ${coords.map{it.toString()}}")
+        Log.d("convert", "$op ${coords.map{it.toString()}}")
         when (op) {
             "l" -> {
                 convert("L", coords.relToAbs(absX, absY))
@@ -88,17 +91,28 @@ private class SvgPath : Path() {
                 absX = x; absY = y
             }
             "c" -> {
-                convert("C", coords.relToAbs(absX, absY))
+                var cc = coords
+                do {
+                    val c = cc.sliceArray(0..5)
+                    if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
+                    Log.d("convert", "c:${c.map{it.toString()}}")
+                    convert("C", c.relToAbs(absX, absY))
+                } while (cc.isNotEmpty())
             }
             "C" -> {
-                val (x0,y0,x1,y1,
-                    x2,y2) = coords.check(op, 6)
-                super.cubicTo(x0,y0,x1,y1,x2,y2)
-                // calculate reflection in case next op is svg
-                // s/S shorthand bezier.
-                xR = (2*x2) - x1
-                yR = (2*y2) - y1
-                absX =  coords[coords.lastIndex - 1]; absY = coords[coords.lastIndex]
+                var cc = coords
+                do {
+                    val c = cc.sliceArray(0..5)
+                    Log.d("convert", "C:${c.map{it.toString()}}")
+                    if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
+                    val (x0,y0,x1,y1,x2,y2) = c
+                    super.cubicTo(x0,y0,x1,y1,x2,y2)
+                    // calculate reflection in case next op is svg
+                    // s/S shorthand bezier.
+                    xR = (2*x2) - x1
+                    yR = (2*y2) - y1
+                    absX =  coords[coords.lastIndex - 1]; absY = coords[coords.lastIndex]
+                } while (cc.isNotEmpty())
             }
             "s" -> {
                 convert("S", coords.relToAbs(absX, absY))
@@ -137,7 +151,7 @@ fun readPathFile(reader:BufferedReader) :
 }
 val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
 val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
-val tr = "^\\s*<text.*matrix\\([^)]+" +  // text starts with "<text transform="
+const val tr = "^\\s*<text.*matrix\\([^)]+" +  // text starts with "<text transform="
     "\\s+((?:\\d+.)\\d+)" +                     // Followed by the a transform matrix.
     "\\s+((?:\\d+.)\\d+)\\)[^>]+>" +            // the last values in the matrix are x,y
     "([^<]+)"                                   // and the text.
@@ -150,26 +164,38 @@ fun readSvgFile(reader: BufferedReader) :
     val textInfo = mutableListOf<PositionedTextInfo>()
     var lineCounter = 0
     var matchResult : MatchResult?
-    var line = reader.readLine()
-    nextLine@while (reader.readLine().also{line = it} != null) {
+    var inXmlComment = false
+    val commentOpen = "<!--".toRegex()
+    val commentClose = "-->".toRegex()
+    var line : String?
+    do {
+        line = reader.readLine()
         lineCounter++
-        if (line.matches("^\\s*#.*".toRegex()))
-            continue@nextLine
-        if (pathRegex.find(line).also {  matchResult = it } != null) {
+        Log.d("lineCounter", "$lineCounter")
+        if (line.isNullOrEmpty())
+            continue
+        else if (inXmlComment) {
+            if (commentClose.matches(line)) {
+                inXmlComment = false
+            }
+            continue
+        } else if (commentOpen.matches(line)) {
+            inXmlComment = true
+            continue
+        } else if (pathRegex.find(line).also { matchResult = it } != null) {
             pathInfo.add(matchResult!!.groupValues[1])
-        }
-        else if (widthHeightRegex.find(line).also {  matchResult = it } != null) {
+        } else if (widthHeightRegex.find(line).also { matchResult = it } != null) {
             val (width, height) = matchResult!!.destructured
             pathInfo.add("$width $height")
-        }
-        else if (textRegex.find(line).also {  matchResult = it } != null) {
+        } else if (textRegex.find(line).also { matchResult = it } != null) {
             // text is <text, a translation matrix, then text.
             // I'm rerpresenting that with 'x$matrix:$text where matrix is the
             // comma separated values from the matrix
-            val(x, y, text) = matchResult!!.destructured
+            val (x, y, text) = matchResult!!.destructured
             textInfo.add(PositionedTextInfo(x.toFloat(), y.toFloat(), text))
         }
-    }
+    } while (line != null)
+    Log.d("lineCounter", "got here")
     return Pair(pathInfo.toTypedArray(),textInfo.toTypedArray())
 }
 
