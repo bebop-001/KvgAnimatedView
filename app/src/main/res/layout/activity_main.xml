@@ -29,6 +29,7 @@
         android:layout_marginTop="30dp"
         android:ems="10"
         android:gravity="center|center_horizontal|center_vertical"
+        android:text="㓁"
         android:hint="Enter 1 char here"
         android:inputType=""
         app:layout_constraintHorizontal_bias="0.572"
