@@ -22,6 +22,7 @@ import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -37,9 +38,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun animationOnClick(view: View) {
-        val renderChar = renderChar_TXT.text.toString().toCharArray()[0]
-        val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
-        startAnimator.putExtra("renderChar", renderChar.toString())
-        startActivity(startAnimator)
+        val txt = renderChar_TXT.text.toString()
+        if (txt.isNotEmpty()) {
+            val renderChar = renderChar_TXT.text.toString()
+            val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
+            startAnimator.putExtra("renderChar", renderChar.toString())
+            startActivity(startAnimator)
+        }
+        else {
+            Toast.makeText(this, "skipping empty input", Toast.LENGTH_SHORT).show()
+        }
     }
 }

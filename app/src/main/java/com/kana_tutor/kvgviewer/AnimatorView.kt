@@ -23,20 +23,12 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
+import java.lang.RuntimeException
+
+import com.kana_tutor.kvgviewer.KvgStrokedChar.KvgAnnotation
 
 // our own personal exception.
-class KvgAnimateException(message:String) : Exception (message) {
-    /*
-    constructor(op:String, found:Int, expected:Int) :
-            this(String.format("op:%s expected %d args found %d",
-                op, found, expected))
-    constructor(renderChar:Char, isPathFile: Boolean, error:String) :
-            this(String.format("KvgToAndroidPaths filed for \"%c\" %s file:" +
-                    "Exception:%s", renderChar,
-                if (isPathFile) "path file " else "svg file ",
-                error))
-     */
-}
+class KvgAnimateException(message:String) : Exception (message)
 
 // a custom path for rendering an animated view of a
 // character as expressed in a Kvg file.
@@ -68,9 +60,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // contains paths 'rendered' during the animation.
     private val renderedCharPath = Path()
 
-    private var strokePaths: Array<Path>? = null
-    private var strokeIdText: Array<PositionedTextInfo>? = null
-    private var charPath = Path()
+    private var strokeAnnotations = arrayOf<KvgAnnotation>()
+    private var ghostPath =  Path()
+    private var strokedPaths = arrayOf<Path>()
 
     private var distance = 0f //distance moved
 
@@ -264,16 +256,11 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             style = Paint.Style.FILL
         }
     }
-    private fun PositionedTextInfo.putText(matrix:Matrix) : PositionedTextInfo {
-        val src = floatArrayOf(this.x, this.y)
-        val dst = floatArrayOf(0f,0f)
-        matrix.mapPoints(dst, src)
-        val rv = PositionedTextInfo(dst[0], dst[1], text)
-        // Log.d("putText", "$this -> $rv")
-        return rv
-    }
-    private fun Canvas.renderText(text : PositionedTextInfo, paint:Paint) {
-        drawText(text.text, text.x, text.y, paint)
+    private fun Canvas.renderText(
+        annotation : KvgAnnotation, paint:Paint
+    ) {
+        val (x,y) = annotation.point
+        drawText(annotation.text, x, y, paint)
     }
 
     // speed of animation is determined by number of steps.
@@ -283,34 +270,69 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     fun setAnimateSpeed(speedIn: Int) {
         animateSteps = speed[speedIn]
     }
-    private val positionedText = mutableListOf<PositionedTextInfo>()
-    // called from KanaAnimator to select our character.
-    fun setRenderCharacter(kp: KvgToAndroidPaths) {
-        if (kp.strokePaths == null || kp.strokeIdText == null) {
-            Log.d("setRenderChar", "stroke paths or text null")
-            return
+    fun KvgStrokedChar.getPaths() : Array<Path> {
+        operator fun Array<Float>.component6() = this[5]
+        val paths = mutableListOf(Path())
+        strokes.forEach { stroke ->
+            val p = Path()
+            stroke.segments.forEach {
+                val op = it.op; val coord = it.coord
+                when (op) {
+                    "M" -> {
+                        val (x,y) = coord
+                        paths[0].moveTo(x,y)
+                        p.moveTo(x,y)
+                    }
+                    "L" -> {
+                        val (x,y) = coord
+                        paths[0].lineTo(x,y)
+                        p.lineTo(x,y)
+                    }
+                    "C" -> {
+                        val (x0,y0,xr,yr,x1,y1) = coord
+                        p.cubicTo(x0,y0,xr,yr,x1,y1)
+                        paths[0].cubicTo(x0,y0,xr,yr,x1,y1)
+                    }
+                    else -> throw RuntimeException("KvgStrokedChar.getPaths: " +
+                        "Unexpected operator:$op")
+                }
+            }
+            paths.add(p)
         }
-        // for normalize.
-        charWidth = kp.width
-        charHeight = kp.height
-        strokePaths = kp.strokePaths!!
-        strokeIdText = kp.strokeIdText!!
-
-        startNewLine = true
-        strokePathCounter = 0
-        renderedCharPath.reset()
+        return paths.toTypedArray()
+    }
+    // Apply the scale matrix to the annotation position.
+    fun setStrokedChar(strokedChar: KvgStrokedChar) {
+        fun KvgAnnotation.applyScaleMatrix() : KvgAnnotation {
+            val rv : KvgAnnotation
+            with (point) {
+                val src = floatArrayOf(first, second)
+                scaleMatrix.mapPoints(src)
+                rv = KvgAnnotation(Pair(src[0], src[1]), text)
+            }
+            return rv
+        }
+        val (width, height) = strokedChar.dimensions
+        charWidth = width
+        charHeight = height
 
         scaleMatrix = Matrix()
         scaleMatrix.setScale(
             layoutWidth/ charWidth, layoutHeight/ charHeight,
             0f, 0f)
-        for (i in strokePaths!!.indices) {
-            strokePaths!![i].transform(scaleMatrix)
-        }
-        strokePaths!!.map { charPath.addPath(it) }
-        strokeIdText!!.map{
-            positionedText.add(it.putText(scaleMatrix))
-        }
+
+        val paths = strokedChar.getPaths()
+        paths.forEach { it.transform(scaleMatrix) }
+        ghostPath = paths[0]
+        strokedPaths = paths.sliceArray(1..paths.lastIndex)
+
+        // Apply the scale matrix to the annotation position.
+        strokeAnnotations = strokedChar.annotations
+            .map {it.applyScaleMatrix()}
+            .toList().toTypedArray()
+        startNewLine = true
+        strokePathCounter = 0
+        renderedCharPath.reset()
     }
 
     private fun Canvas.renderGrid() {
@@ -335,25 +357,19 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         var pause = false
         startTime = System.currentTimeMillis()
         canvas.drawPaint(bgPaint)
-        if (strokePaths == null || strokeIdText == null) {
-            Log.d("AnimatorView", "onDraw called with null paths or text")
-            canvas.renderGrid()
-            return
-        }
-
         // draw the ghost char and grid.
-        canvas.drawPath(charPath, ghostCharPaint)
+        canvas.drawPath(ghostPath, ghostCharPaint)
         canvas.renderGrid()
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
         for (i in 0 until animateSteps) {
-            if (strokePathCounter < strokePaths!!.size) {
+            if (strokePathCounter < strokedPaths.size) {
                 if (startNewLine) {
                     // Log.d("draw", "stroke $strokePathCounter")
                     distance = 0f
                     pause = true
                     // measure the length of the current path.
-                    charPathMeasure.setPath(strokePaths!![strokePathCounter], false)
+                    charPathMeasure.setPath(strokedPaths[strokePathCounter], false)
                     pathLength = charPathMeasure.length
                 }
                 if (distance < pathLength + animationStepDistance) {
@@ -390,13 +406,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
-            if (strokePathCounter == strokePaths!!.size) {
-                for (ti in positionedText) {
+            if (strokePathCounter == strokedPaths.size) {
+                for (annotation in strokeAnnotations) {
                     // Paint a white background first to make text
                     // stand out, then paint the text.
-                    canvas.renderText(ti, textBgPaint)
-                    canvas.renderText(ti, textBgPaint)
-                    canvas.renderText(ti, textPaint)
+                    canvas.renderText(annotation, textBgPaint)
+                    canvas.renderText(annotation, textBgPaint)
+                    canvas.renderText(annotation, textPaint)
                 }
                 canvas.drawCircle(pos[0], pos[1],
                     0.5f * animateStrokeWidth, textPaint)

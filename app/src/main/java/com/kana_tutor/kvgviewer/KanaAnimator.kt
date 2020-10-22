@@ -50,12 +50,16 @@ class KanaAnimator : Activity() {
         animatorView = findViewById(R.id.animator_view)
         animatorView.setAnimateSpeed(animateSpeed)
         animatorView.setOnClickListener {
-            // render char is only first char in string.
-            val kp  = KvgToAndroidPaths(this, renderChar.toCharArray()[0])
-
-            animatorView.setRenderCharacter(kp)
+            val rc = renderChar.toCharArray()[0]
+            val reader = assets.open(
+                String.format("svg/%05x.svg", rc.toInt())
+            ).bufferedReader()
+            val strokedChar = KvgStrokedChar(
+                String.format("%05x", rc.toInt()),
+                renderChar.toCharArray()[0],
+                reader)
+            animatorView.setStrokedChar(strokedChar)
             animatorView.invalidate()
-            // animateKana.show(this, animateView)
         }
         // If user touches screen outside of the animate view, exit.
         findViewById<View>(R.id.animate_layout).setOnClickListener { v: View ->
@@ -72,8 +76,17 @@ class KanaAnimator : Activity() {
                     .apply()
                 intent = null
                 // reduce string in to first character only.
-                val kp  = KvgToAndroidPaths(this, renderChar.toCharArray()[0])
-                animatorView.setRenderCharacter(kp)
+                val rc = renderChar.toCharArray()[0]
+                val reader = assets.open(
+                    String.format("svg/%05x.svg", rc.toInt())
+                ).bufferedReader()
+                val strokedChar = KvgStrokedChar(
+                    String.format("%05x", rc.toInt()),
+                    renderChar.toCharArray()[0],
+                    reader)
+                animatorView.setStrokedChar(strokedChar)
+
+                Log.d("strokedChar", strokedChar.toString())
             }
         }
         // register for the speed-set context menu.
