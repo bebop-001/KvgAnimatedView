@@ -287,7 +287,7 @@ class KvgToAndroidPaths(context: Context, private val renderChar: Char) {
                 ).bufferedReader()
                 pathInfo = readPathFile(reader)
             } else {
-                val reader = context.assets.open(
+                var reader = context.assets.open(
                     String.format("svg/%05x.svg", renderChar.toInt())
                 ).bufferedReader()
                 pathInfo = readSvgFile(reader)
