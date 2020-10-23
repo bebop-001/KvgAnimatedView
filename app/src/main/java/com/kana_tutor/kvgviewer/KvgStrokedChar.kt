@@ -82,7 +82,6 @@ class KvgStrokedChar (
                         do {
                             val c = cc.sliceArray(0..5)
                             if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
-                            Log.d("convert", "c:${c.map{it.toString()}}")
                             saveAbsSeg("C", c.toAbs())
                         } while (cc.isNotEmpty())
                     }
@@ -90,7 +89,6 @@ class KvgStrokedChar (
                         var cc = coords
                         do {
                             val c = cc.sliceArray(0..5)
-                            Log.d("convert", "C:${c.map{it.toString()}}")
                             if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
                             val (x0,y0,x1,y1,x2,y2) = c
                             // calculate reflection in case next op is svg
@@ -108,15 +106,20 @@ class KvgStrokedChar (
                         saveAbsSeg("C",
                             arrayOf(xReflection,yReflection,x0,y0,x1,y1))
                     }
-                    else -> throw SvgConvertException ("unrecognized operator: \"$op\"")
+                    else -> throw SvgConvertException (
+                        "saveAbsSeg: unrecognized operator: \"$op\"")
                 }
             }
-            val segments = "([mltsc][\\d+\\.,-]+)".toRegex(RegexOption.IGNORE_CASE)
+            val segments = "(\\s*[a-zA-Z]\\s*[\\s\\d+\\.,-]+)".toRegex()
                 .findAll(strokeIn)
                 .map { it.value }
                 .toList()
+            if (segments.size == 0) {
+                throw SvgConvertException(
+                        "KvgStroke: no segments found in \"$segments\"")
+            }
             for (seg in segments) {
-                val (op, floatStr) = "(.)(.*)".toRegex()
+                val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+\\.,-]+)".toRegex()
                     .find(seg)!!
                     .destructured
                 val coords = "(-*\\d+(?:\\.\\d+)*)".toRegex()
@@ -124,8 +127,7 @@ class KvgStrokedChar (
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
                 saveAbsSeg(op, coords)
-
-                Log.d("nextLine", "KvgStroke:Segments:${segments.map { it }}")
+                println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
@@ -160,18 +162,18 @@ class KvgStrokedChar (
             if (isXml == null)
                 isXml = "^<\\?xml\\s+".toRegex().find(line) != null
             else if (isXml) {
-                Log.d("nextLine", "$lineNumber:$line")
+                println("nextLine" + "$lineNumber:$line")
                 when {
                     widthHeightRegex._find(line) -> {
                         val (width, height) = _findResult!!.destructured
                         _dimensions = Pair(width.toFloat(), height.toFloat())
-                        Log.d("nextLine", "dimensions: ${dimensions}")
+                        println("nextLine" + "dimensions: ${dimensions}")
                     }
                     pathRegex._find(line) -> {
-                        Log.d("strokedChar", ">>${_findResult!!.groupValues[1]}")
+                        println("strokedChar" + ">>${_findResult!!.groupValues[1]}")
                         val stroke = KvgStroke(_findResult!!.groupValues[1])
                         _strokes.add(stroke)
-                        Log.d("strokedChar", "<<${stroke}")
+                        println("strokedChar" + "<<${stroke}")
                     }
                     textRegex._find(line) -> {
                         val (posX, posY, text) =
