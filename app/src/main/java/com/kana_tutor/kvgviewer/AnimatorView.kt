@@ -70,7 +70,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
     // x/y coordinate of current point.
     private val pos = FloatArray(2)
-    private var strokePathCounter = 0// path currently being rendered.
+    // to force redraw, set the counter below to 0 and
+    // invalidate the view.
+    var strokePathCounter = 0// path currently being rendered.
     private var startTime = 0L
     private var startNewLine = true
 

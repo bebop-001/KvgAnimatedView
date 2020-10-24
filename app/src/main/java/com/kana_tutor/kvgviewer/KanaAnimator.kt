@@ -50,15 +50,8 @@ class KanaAnimator : Activity() {
         animatorView = findViewById(R.id.animator_view)
         animatorView.setAnimateSpeed(animateSpeed)
         animatorView.setOnClickListener {
-            val rc = renderChar.toCharArray()[0]
-            val reader = assets.open(
-                String.format("svg/%05x.svg", rc.toInt())
-            ).bufferedReader()
-            val strokedChar = KvgStrokedChar(
-                String.format("%05x", rc.toInt()),
-                renderChar.toCharArray()[0],
-                reader)
-            animatorView.setStrokedChar(strokedChar)
+            // re-draw the animation.
+            animatorView.strokePathCounter = 0
             animatorView.invalidate()
         }
         // If user touches screen outside of the animate view, exit.
