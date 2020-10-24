@@ -130,7 +130,7 @@ class KvgStrokedChar (
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
                 saveAbsSeg(op, coords)
-                println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
+                // println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
@@ -165,18 +165,18 @@ class KvgStrokedChar (
             if (isXml == null)
                 isXml = "^<\\?xml\\s+".toRegex().find(line) != null
             else if (isXml) {
-                println("nextLine" + "$lineNumber:$line")
+                // println("nextLine" + "$lineNumber:$line")
                 when {
                     widthHeightRegex._find(line) -> {
                         val (width, height) = _findResult!!.destructured
                         _dimensions = Pair(width.toFloat(), height.toFloat())
-                        println("nextLine" + "dimensions: $dimensions")
+                        // println("nextLine" + "dimensions: $dimensions")
                     }
                     pathRegex._find(line) -> {
-                        println("strokedChar" + ">>${_findResult!!.groupValues[1]}")
+                        // println("strokedChar" + ">>${_findResult!!.groupValues[1]}")
                         val stroke = KvgStroke(_findResult!!.groupValues[1])
                         _strokes.add(stroke)
-                        println("strokedChar" + "<<${stroke}")
+                        // println("strokedChar" + "<<${stroke}")
                     }
                     textRegex._find(line) -> {
                         val (posX, posY, text) =
