@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("FunctionName", "LocalVariableName")
+@file:Suppress("FunctionName", "LocalVariableName", "CascadeIf")
 
 package com.kana_tutor.kvgviewer
 
@@ -25,7 +25,7 @@ class SvgConvertException(message:String) : Exception (message)
 
 // based on https://www.baeldung.com/kotlin-builder-pattern
 class KvgStrokedChar (
-    val name : String,
+    private val name : String,
     private val renderChar : Char,
     fileHandle : BufferedReader
 ) {
@@ -187,14 +187,37 @@ class KvgStrokedChar (
                     }
                 }
             }
+            // path file.
+            else if (line.isNotEmpty()){
+                val (op, arg) = "(.)(.*)".toRegex()
+                    .find(line)!!.destructured
+                when (op) {
+                    "N" -> {/* name */}
+                    "C" -> {/* renderChar */}
+                    "W" -> {// dimensions
+                        val (posX, posY) = arg
+                            .split(",")
+                            .map { it.toFloat() }
+                            .toFloatArray()
+                        _dimensions = Pair(posX, posY)
+                    }
+                    "S" -> _strokes.add(KvgStroke(arg))
+                    "X" -> {// text
+                        val (posX, posY, text) = arg.split(",")
+                        _annotations.add(KvgAnnotation(
+                            Pair(posX.toFloat(), posY.toFloat()), text
+                        ))
+                    }
+                }
+            }
         }
     }
     override fun toString() : String {
         return arrayOf(
-            "N" + name,
-            "C" + renderChar,
+            "N$name",
+            "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
-            strokes.map{"S" + it.toString()}.toList().joinToString("\n"),
+            strokes.map{ "S$it" }.toList().joinToString("\n"),
             annotations.map{it.toString()}.toList().joinToString("\n"),
             ""
         ).joinToString("\n")

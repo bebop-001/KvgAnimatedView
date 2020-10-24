@@ -78,7 +78,7 @@ class KanaAnimator : Activity() {
                 // reduce string in to first character only.
                 val rc = renderChar.toCharArray()[0]
                 val reader = assets.open(
-                    String.format("svg/%05x.svg", rc.toInt())
+                    String.format("paths/%05x.pat", rc.toInt())
                 ).bufferedReader()
                 val strokedChar = KvgStrokedChar(
                     String.format("%05x", rc.toInt()),
