@@ -113,7 +113,7 @@ class KvgStrokedChar (
                         "saveAbsSeg: unrecognized operator: \"$op\"")
                 }
             }
-            val segments = "(\\s*[a-zA-Z]\\s*[\\s\\d+\\.,-]+)".toRegex()
+            val segments = "(\\s*[a-zA-Z]\\s*[\\s\\d+.,-]+)".toRegex()
                 .findAll(strokeIn)
                 .map { it.value }
                 .toList()
@@ -122,7 +122,7 @@ class KvgStrokedChar (
                         "KvgStroke: no segments found in \"$segments\"")
             }
             for (seg in segments) {
-                val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+\\.,-]+)".toRegex()
+                val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+.,-]+)".toRegex()
                     .find(seg)!!
                     .destructured
                 val coords = "(-*\\d+(?:\\.\\d+)*)".toRegex()
