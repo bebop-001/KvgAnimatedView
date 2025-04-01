@@ -14,8 +14,9 @@ binmode(STDERR, ':utf8');
     @ARGV = map { decode 'UTF8', $_ } @ARGV;
 };
 
-my $USAGE = "USAGE: $funcName [-f] [-k|-a] [char]
+my $USAGE = "USAGE: $funcName [-f] [-k|-K|-a] [char] svgDir pathsDir
     -k  : Create only the kana files
+    -K  : Create only the Kanji files
     -a  : Create all files
     char: Create a path file for 'char' only.
     Kvg svg files should be under the svg directory under the
@@ -23,8 +24,17 @@ my $USAGE = "USAGE: $funcName [-f] [-k|-a] [char]
     directory.
 ";
 die $USAGE, "\nNo arguments.\n" unless @ARGV;
-die $USAGE, "bad arg:$ARGV[0]\n" if ($ARGV[0] =~ /^-/ && $ARGV[0] !~ /^-[ak]$/);
+die $USAGE, "bad arg:$ARGV[0]\n" if ($ARGV[0] =~ /^-/ && $ARGV[0] !~ /^-[akK]$/);
 my @args = @ARGV;
+unless (-d $args[-1]) {
+    die $USAGE, "Mising output directory arg.\n", "Last directory should be the output directory.\n";
+}
+my $pathsDir = pop @args;
+unless (-d $args[-1]) {
+    die $USAGE, "Next to Last directory should be the svg file directory.\n";
+}
+my $svgDir = pop @args;
+
 my ($RENDER_CHAR, $RENDER_MODE);
 # Boolean. true()/false() return "true"/"false". 
 # true(val) returns true if val is "true"
@@ -45,7 +55,7 @@ sub false {
     return tf($_[0], "false");
 }
 while(defined(my $arg = shift @args)) {
-    if ($arg =~ /^-([ak])$/) {
+    if ($arg =~ /^-([akK])$/) {
         $RENDER_MODE = $1;
     }
     else {
@@ -56,17 +66,19 @@ while(defined(my $arg = shift @args)) {
 
 sub Get {
     my $file = $_[0];
+    # file name is ord of char being printed, possibly a character style
+    # and .svg extention.
     open(F, $file) || die "Failed to open $file for read:$!\\n";
-    my (@paths, $key);
-    $key = sprintf("%06x",
-        hex(($file =~ m{/([\da-zA-Z]+)\.svg$})[0]));
+    my (@paths, $charOrd);
+    $charOrd = sprintf("%06x",
+        hex(($file =~ m{/([\da-zA-Z]{5})})[0]));
+    my $renderChar = chr(hex($charOrd));
     my ($width, $height, $h_scale_factor, $v_scale_factor);
     while (<F>) {
         # use width and hight to calculate a scale factor for
         # normalizing char to be 100 x 100 pix
         if (/<svg\s.*width="([^"]+)".*height="([^"]++)/) {
-            push @paths, sprintf("%s %d %d", chr(hex($key)),
-                $1, $2);
+            push @paths, sprintf("C:%s\nWH:%d,%d", $renderChar, $1, $2);
         }
         elsif (/<path/) {
             my $p = ($_ =~ /\s+d="([^"]+)/)[0];
@@ -80,7 +92,7 @@ sub Get {
                 push @pp, "$op"
                     . join(',', map {sprintf("%.3f", $_)}@vals);
             }
-            push @paths, sprintf("%s %s", chr(hex($key)), join('', @pp));
+            push @paths, sprintf("%s", join('', @pp));
         }
     }
     return [@paths];
@@ -142,15 +154,14 @@ my $outAllFile = ($RENDER_MODE)
         ? "kanjivg.all.pat"
         : "kanjivg.kana.pat"
     : undef;
-my $svgDir = "$funcDir/svg";
 # map char => svg filename.
 my $hiragana = qr/[\x{3041}-\x{3096}]/;
 my $katakana = qr/[\x{30A0}-\x{30FF}]/;
 my $kanji = qr/[\x{3400}-\x{4DB5}\x{4E00}-\x{9FCB}\x{F900}-\x{FA6A}]/;
 my %allChars = map {
-    /([\da-f]{5})\.svg$/;
-    chr(hex($1)) => $_;
-} grep m{/[\da-f]{5}.svg}, <$svgDir/*>;
+    my ($ch, $ext) = m{^.*/([\da-f]{5})(-.*)*\.svg$};
+    chr(hex($ch)) . ($ext || '') => $_;
+} grep m{([\da-f]{5})(?:-[^.]+)*\.svg$}, <$svgDir/*>;
 
 # delete everything not kanji or kana.
 foreach my $char (keys %allChars) {
@@ -160,27 +171,28 @@ foreach my $char (keys %allChars) {
             delete $allChars{$char};
     }
 }
-my $outCharFile = "%05x.pat";
+my $outCharFile = "$pathsDir/%s.avg";
 my (@collectionLines);
-my @renderChars = ($RENDER_CHAR)
+my @renderNames = ($RENDER_CHAR)
     ? ($RENDER_CHAR)
     : ($RENDER_MODE eq 'k')
         ? grep($_ =~ $hiragana || $_ =~ $katakana, keys %allChars)
-        : keys %allChars;
-foreach my $renderChar (sort @renderChars) {
-    my $svgFileIn = $allChars{$renderChar};
+        : ($RENDER_MODE eq 'k')
+            ? grep($_ =~ $kanji, keys %allChars)
+            : keys %allChars;
+foreach my $renderName (sort @renderNames) {
+    my $svgFileIn = "$allChars{$renderName}";
     if (-f $svgFileIn) {
+        my $renderChar = ($renderName =~ m{^([^-])+})[0];
         my ($paths) = Get($svgFileIn);
-        my $kvgPat = join("\n",
-            sprintf("%s %d", $renderChar, scalar $#$paths + 1),
-            @$paths, '');
+        my $kvgPat = join("\n", @$paths, '');
         push @collectionLines, $kvgPat;
-        printPathsFile(sprintf($outCharFile, ord($renderChar)),
+        printPathsFile(sprintf($outCharFile, $renderName),
             false(), @$paths);
         printf("$renderChar:%05x ", ord($renderChar));
     }
     else {
-        push @missing, "$renderChar:$svgFileIn" unless -f $svgFileIn;
+        push @missing, "$renderName:$svgFileIn" unless -f $svgFileIn;
     }
 }
 printPathsFile($outAllFile, true(), @collectionLines) if defined $outAllFile;
