@@ -17,6 +17,7 @@ package com.kana_tutor.kvgviewer
 
 import android.app.Activity
 import android.content.SharedPreferences
+import android.content.res.AssetFileDescriptor
 import android.os.Bundle
 import android.util.Log
 import android.view.ContextMenu
@@ -26,7 +27,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
-
+import java.io.BufferedReader
+import java.io.InputStream
+private const val TAG = "KanaAnimator"
 // interface to the AnimatorView.
 class KanaAnimator : Activity() {
     companion object {
@@ -70,16 +73,24 @@ class KanaAnimator : Activity() {
                 intent = null
                 // reduce string in to first character only.
                 val rc = renderChar.toCharArray()[0]
-                val reader = assets.open(
-                    String.format("paths/%05x.pat", rc.toInt())
-                ).bufferedReader()
-                val strokedChar = KvgStrokedChar(
-                    String.format("%05x", rc.toInt()),
-                    renderChar.toCharArray()[0],
-                    reader)
-                animatorView.setStrokedChar(strokedChar)
+                val fname = "paths/%05x.pat".format(rc.toInt())
+                val strokedChar: KvgStrokedChar? = null
+                try {
+                    val reader: BufferedReader = assets.open(fname).bufferedReader()
+                    val strokedChar = KvgStrokedChar(
+                        String.format("%05x", rc.toInt()),
+                        renderChar.toCharArray()[0],
+                        reader)
+                    animatorView.setStrokedChar(strokedChar)
 
-                Log.d("strokedChar", strokedChar.toString())
+                }
+                catch (e:Exception) {
+                    val mess = "open $fname dailed: $e"
+                    Toast.makeText(this,mess, Toast.LENGTH_LONG).show()
+                    Log.d(TAG, mess)
+                }
+
+                Log.d(TAG, "strokedChar: $strokedChar")
             }
         }
         // register for the speed-set context menu.
@@ -98,10 +109,10 @@ class KanaAnimator : Activity() {
                     applicationContext,
                     R.string.show_speed_hint,
                     LENGTH_SHORT)
-                    t.setGravity(
-                        Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
-                    0,0)
-                    t.show()
+            t.setGravity(
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+            0,0)
+            t.show()
         }
     }
 

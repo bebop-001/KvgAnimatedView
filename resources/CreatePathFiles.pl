@@ -69,16 +69,17 @@ sub Get {
     # file name is ord of char being printed, possibly a character style
     # and .svg extention.
     open(F, $file) || die "Failed to open $file for read:$!\\n";
-    my (@paths, $charOrd);
-    $charOrd = sprintf("%06x",
+    my (@paths, $key);
+    $key = sprintf("%06x",
         hex(($file =~ m{/([\da-zA-Z]{5})})[0]));
-    my $renderChar = chr(hex($charOrd));
     my ($width, $height, $h_scale_factor, $v_scale_factor);
     while (<F>) {
         # use width and hight to calculate a scale factor for
         # normalizing char to be 100 x 100 pix
         if (/<svg\s.*width="([^"]+)".*height="([^"]++)/) {
-            push @paths, sprintf("C:%s\nWH:%d,%d", $renderChar, $1, $2);
+            $width = $1; $height = $2;
+            $h_scale_factor = 100 / $width;
+            $v_scale_factor = 100 / $height;
         }
         elsif (/<path/) {
             my $p = ($_ =~ /\s+d="([^"]+)/)[0];
@@ -86,13 +87,23 @@ sub Get {
             my ($op, $vals);
             my @pp;
             while (@p && (($op, $vals) = (shift @p, shift @p))) {
-                my @vals = map{sprintf("%.5f", $_)}
+                my @vals = map{sprintf("%.3f", $_)}
                     ($vals =~ m{(-*\d+(?:\.\d+)*)}g);
                 # apply scale factor to result in 100x100 pix char.
-                push @pp, "$op"
+                foreach my $i (0..$#vals) {
+                    $_ = $vals[$i];
+                    # odd index is y value.
+                    if ($i & 01) {
+                        $_ *= $h_scale_factor
+                    }
+                    else {
+                        $_ *= $v_scale_factor
+                    }
+                }
+                push @pp, "$op:"
                     . join(',', map {sprintf("%.3f", $_)}@vals);
             }
-            push @paths, sprintf("%s", join('', @pp));
+            push @paths, join(' ', chr(hex($key)), @pp);
         }
     }
     return [@paths];
@@ -119,7 +130,7 @@ my $HEADER = "# Created by $funcName version $VERSION
 ";
 sub printPathsFile {
     my ($outFileName, $printHeader, @lines) = @_;
-    open(F, ">", "$funcDir/$outFileName")
+    open(F, ">", $outFileName)
         || die "open $funcDir/$outFileName for write FAILED$!\n";
     binmode(F, ':utf8');
     print F $HEADER if true($printHeader);

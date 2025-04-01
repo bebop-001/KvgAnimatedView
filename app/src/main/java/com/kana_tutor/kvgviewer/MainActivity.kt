@@ -19,11 +19,11 @@ package com.kana_tutor.kvgviewer
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
-import kotlinx.android.synthetic.main.activity_main.*
+import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -38,9 +38,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun animationOnClick(view: View) {
-        val txt = renderChar_TXT.text.toString()
+        val tv = findViewById<TextView>(R.id.renderChar_TXT)
+
+        val txt = tv.text
         if (txt.isNotEmpty()) {
-            val renderChar = renderChar_TXT.text.toString()
+            val renderChar = txt
             val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
             startAnimator.putExtra("renderChar", renderChar.toString())
             startActivity(startAnimator)
