@@ -18,7 +18,13 @@ package com.kana_tutor.kvgviewer
 import java.io.BufferedReader
 import java.io.File
 
-fun getStrokedChar(svgFileName:String) : KvgStrokedChar? {
+fun Die(errorMsg:String) {
+    val exitMess = "CreatePathFiles:$errorMsg"
+    System.err.println(exitMess)
+    throw RuntimeException ("CreatePathFiles:$errorMsg")
+}
+
+fun getStrokedChar(svgFileName:String) : KvgStrokedChar {
     val matchResult = "^.*/([\\d+a-fA-f]+)"
         .toRegex()
         .find(svgFileName)
@@ -42,10 +48,19 @@ var sortHash = mutableMapOf<String,Int>()
 var sortedList = mutableListOf<String>()
 
 fun main(args: Array<String>) {
-    for (svgName in File("resources/kanji/").list()) {
+    val svgSourceDir = File("resources/kanji/")
+    val pathOutputDir = File("resources/path/")
+    if (!svgSourceDir.exists() || !svgSourceDir.isDirectory) {
+        Die("Failed to find source kvg svg directory:$svgSourceDir")
+    }
+    if (!pathOutputDir.exists() || !pathOutputDir.isDirectory) {
+        Die("Failed to find destination path files directory:$pathOutputDir")
+    }
+
+    for (svgName in svgSourceDir.list()!!) {
         if (svgName.endsWith(".svg")) {
-            var matchResult = "^([\\da-fA-F]+)".toRegex().find(svgName)
-            val idx = matchResult!!.groups[1]!!.value!!.toInt(16)
+            val matchResult = "^([\\da-fA-F]+)".toRegex().find(svgName)
+            val idx = matchResult!!.groups[1]!!.value.toInt(16)
             if (idx in 0x3400..0x4DB5 || idx in 0x4E00..0x9FCB || idx in 0xF900..0xFA6A) {
                 sortHash[svgName] = idx
                 sortedList.add(svgName)
@@ -53,12 +68,12 @@ fun main(args: Array<String>) {
         }
     }
     // output list in sorted order to make it a bit easier to see what's going on.
-    sortedList.sortWith(compareBy{it -> sortHash[it]})
+    sortedList.sortWith(compareBy{ it -> sortHash[it]})
     var i = 1
     for (svgName in sortedList) {
         val matchResult = "^(.*)\\.svg$".toRegex().find(svgName)
         val pathFileName = "resources/path/" +
-            (matchResult!!.groups[1]!!.value) + ".pat";
+                (matchResult!!.groups[1]!!.value) + ".pat"
         val strokedChar =
             getStrokedChar("resources/kanji/$svgName")
         File(pathFileName).writeText(strokedChar.toString())
