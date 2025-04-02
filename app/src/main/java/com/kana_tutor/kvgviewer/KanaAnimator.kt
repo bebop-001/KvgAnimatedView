@@ -73,7 +73,7 @@ class KanaAnimator : Activity() {
                 intent = null
                 // reduce string in to first character only.
                 val rc = renderChar.toCharArray()[0]
-                val fname = "paths/%05x.pat".format(rc.toInt())
+                val fname = "paths/儲.avg"
                 val strokedChar: KvgStrokedChar? = null
                 try {
                     val reader: BufferedReader = assets.open(fname).bufferedReader()
