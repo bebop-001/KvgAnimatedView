@@ -66,22 +66,25 @@ class KvgStrokedChar (
                 }
                 return rv
             }
-            // for destructure.
+            // for destructuring.
             operator fun <Float> Array<Float>.component6() = this[5]
             var xReflection = 0f; var yReflection = 0f
             @SuppressLint("DefaultLocale")
-            fun saveAbsSeg(op: String, coords:Array<Float>) {
+            @Suppress("UNUSED_VARIABLE")
+            fun saveAbsSeg(op: String, coord:Array<Float>) {
                 when (op) {
                     "L", "M" -> {
-                        absX = coords[0]; absY = coords[1]
-                        segments.add(KvgStrokeSegment(
-                            op, coords))
+                        absX = coord[0]; absY = coord[1]
+                        segments.add(
+                            KvgStrokeSegment(
+                            op, coord)
+                        )
                     }
                     "l", "m" -> {
-                        saveAbsSeg(op.toUpperCase(), coords.toAbs())
+                        saveAbsSeg(op.uppercase(), coord.toAbs())
                     }
                     "c" -> {
-                        var cc = coords.copyOf()
+                        var cc = coord.copyOf()
                         do {
                             val c = cc.sliceArray(0..5)
                             if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
@@ -89,7 +92,7 @@ class KvgStrokedChar (
                         } while (cc.isNotEmpty())
                     }
                     "C" -> {
-                        var cc = coords
+                        var cc = coord
                         do {
                             val c = cc.sliceArray(0..5)
                             if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
@@ -98,14 +101,16 @@ class KvgStrokedChar (
                             // s/S shorthand bezier.
                             xReflection = (2*x2) - x1
                             yReflection = (2*y2) - y1
-                            absX =  coords[coords.lastIndex - 1]; absY = coords[coords.lastIndex]
-                            segments.add(KvgStrokeSegment(
-                                op, c))
+                            absX =  coord[coord.lastIndex - 1]; absY = coord[coord.lastIndex]
+                            segments.add(
+                                KvgStrokeSegment(
+                                op, c)
+                            )
                         } while (cc.isNotEmpty())
                     }
-                    "s" -> saveAbsSeg("S", coords.toAbs())
+                    "s" -> saveAbsSeg("S", coord.toAbs())
                     "S" -> {
-                        val (x0,y0,x1,y1) = coords
+                        val (x0,y0,x1,y1) = coord
                         saveAbsSeg("C",
                             arrayOf(xReflection,yReflection,x0,y0,x1,y1))
                     }
@@ -119,17 +124,17 @@ class KvgStrokedChar (
                 .toList()
             if (segments.isEmpty()) {
                 throw SvgConvertException(
-                        "KvgStroke: no segments found in \"$segments\"")
+                    "KvgStroke: no segments found in \"$segments\"")
             }
             for (seg in segments) {
                 val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+.,-]+)".toRegex()
                     .find(seg)!!
                     .destructured
-                val coords = "(-*\\d+(?:\\.\\d+)*)".toRegex()
+                val coord = "(-*\\d+(?:\\.\\d+)*)".toRegex()
                     .findAll(floatStr)
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
-                saveAbsSeg(op, coords)
+                saveAbsSeg(op, coord)
                 // println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
             }
         }
@@ -142,10 +147,10 @@ class KvgStrokedChar (
         val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
         val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
         val  textRegex = arrayOf(
-                "^\\s*<text.*matrix\\([^)]+",   // text starts with "<text transform="
-                "\\s+(\\d+(?:\\.\\d+.)*)",          // Followed by the a transform matrix.
-                "\\s+(\\d+(?:\\.\\d+)*)\\)[^>]+>", // the last values in the matrix are x,y
-                "([^<]+)")                      // and the text.
+            "^\\s*<text.*matrix\\([^)]+",   // text starts with "<text transform="
+            "\\s+(\\d+(?:\\.\\d+.)*)",          // Followed by the a transform matrix.
+            "\\s+(\\d+(?:\\.\\d+)*)\\)[^>]+>", // the last values in the matrix are x,y
+            "([^<]+)")                      // and the text.
             .joinToString("").toRegex()
         var _findResult : MatchResult? = null
         fun Regex._find(str: String) : Boolean {
@@ -181,9 +186,11 @@ class KvgStrokedChar (
                     textRegex._find(line) -> {
                         val (posX, posY, text) =
                             _findResult!!.destructured
-                        _annotations.add(KvgAnnotation(
+                        _annotations.add(
+                            KvgAnnotation(
                             Pair(posX.toFloat(), posY.toFloat()), text
-                        ))
+                        )
+                        )
                     }
                 }
             }

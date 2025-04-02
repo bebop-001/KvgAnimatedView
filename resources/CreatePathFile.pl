@@ -46,11 +46,20 @@ sub Get {
     my (@paths, $key);
     $key = sprintf("%06x",
         hex(($file =~ m{/([\da-zA-Z]+)\.svg$})[0]));
+    my $svgRegex = qr {
+        <svg\s.*width="([^"]+)".*height="([^"]++)
+    }x;
+    my $textRegex = qr{
+        ^\s*<text.*matrix\([^)]+   # text starts with "<text transform="
+        \s+(\d+(?:\.\d+.)*)        # Followed by the a transform matrix.
+        \s+(\d+(?:\.\d+)*)\)[^>]+> # last values in the matrix are x,y
+        ([^<]+)                    # and the text.
+    }x;
     my ($width, $height, $h_scale_factor, $v_scale_factor);
     while (<F>) {
         # use width and hight to calculate a scale factor for
         # normalizing char to be 100 x 100 pix
-        if (/<svg\s.*width="([^"]+)".*height="([^"]++)/) {
+        if ($svgRegex) {
             $width = $1; $height = $2;
             $h_scale_factor = 100 / $width;
             $v_scale_factor = 100 / $height;
