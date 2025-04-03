@@ -17,12 +17,12 @@
 
 package com.kana_tutor.kvgviewer
 
-import android.annotation.SuppressLint
 import java.io.BufferedReader
 
 // our own personal exception.
 class SvgConvertException(message:String) : Exception (message)
 
+private const val TAG = "KvgStrokedChar"
 // based on https://www.baeldung.com/kotlin-builder-pattern
 class KvgStrokedChar (
     private val name : String,
@@ -69,7 +69,6 @@ class KvgStrokedChar (
             // for destructuring.
             operator fun <Float> Array<Float>.component6() = this[5]
             var xReflection = 0f; var yReflection = 0f
-            @SuppressLint("DefaultLocale")
             @Suppress("UNUSED_VARIABLE")
             fun saveAbsSeg(op: String, coord:Array<Float>) {
                 when (op) {
@@ -118,7 +117,7 @@ class KvgStrokedChar (
                         "saveAbsSeg: unrecognized operator: \"$op\"")
                 }
             }
-            val segments = "(\\s*[a-zA-Z]\\s*[\\s\\d+.,-]+)".toRegex()
+            val segments = """([a-zA-Z][\d+.,-]+)""".toRegex()
                 .findAll(strokeIn)
                 .map { it.value }
                 .toList()
@@ -144,19 +143,6 @@ class KvgStrokedChar (
     }
 
     init {
-        val widthHeightRegex = "^\\s*<svg.*\\s+width=\"(\\d+).*height=\"(\\d+)".toRegex()
-        val pathRegex = "^\\s*<path.*=\"([^\"]+)\"".toRegex()
-        val  textRegex = arrayOf(
-            "^\\s*<text.*matrix\\([^)]+",   // text starts with "<text transform="
-            "\\s+(\\d+(?:\\.\\d+.)*)",          // Followed by the a transform matrix.
-            "\\s+(\\d+(?:\\.\\d+)*)\\)[^>]+>", // the last values in the matrix are x,y
-            "([^<]+)")                      // and the text.
-            .joinToString("").toRegex()
-        var _findResult : MatchResult? = null
-        fun Regex._find(str: String) : Boolean {
-            _findResult = find(str)
-            return _findResult != null
-        }
         var line = ""
         var lineNumber = 1
         fun BufferedReader.nextLine (): Boolean {
@@ -165,37 +151,8 @@ class KvgStrokedChar (
             lineNumber++
             return l != null
         }
-        var isXml : Boolean? = null
         while (fileHandle.nextLine()) {
-            if (isXml == null)
-                isXml = "^<\\?xml\\s+".toRegex().find(line) != null
-            else if (isXml) {
-                // println("nextLine" + "$lineNumber:$line")
-                when {
-                    widthHeightRegex._find(line) -> {
-                        val (width, height) = _findResult!!.destructured
-                        _dimensions = Pair(width.toFloat(), height.toFloat())
-                        // println("nextLine" + "dimensions: $dimensions")
-                    }
-                    pathRegex._find(line) -> {
-                        // println("strokedChar" + ">>${_findResult!!.groupValues[1]}")
-                        val stroke = KvgStroke(_findResult!!.groupValues[1])
-                        _strokes.add(stroke)
-                        // println("strokedChar" + "<<${stroke}")
-                    }
-                    textRegex._find(line) -> {
-                        val (posX, posY, text) =
-                            _findResult!!.destructured
-                        _annotations.add(
-                            KvgAnnotation(
-                            Pair(posX.toFloat(), posY.toFloat()), text
-                        )
-                        )
-                    }
-                }
-            }
-            // path file.
-            else if (line.isNotEmpty()){
+            if (line.isNotEmpty()){
                 val (op, arg) = "(.)(.*)".toRegex()
                     .find(line)!!.destructured
                 when (op) {
@@ -220,12 +177,20 @@ class KvgStrokedChar (
         }
     }
     override fun toString() : String {
+        if (strokes.size != annotations.size)
+            throw RuntimeException("$TAG: expected same annotation and stroke count.\n" +
+                    "Found ${strokes.size} strokes vs" +
+                    " ${annotations.size} annotations")
+        val out = mutableListOf<String>()
+        for(i in 0 until strokes.lastIndex) {
+            out.add(strokes[i].toString())
+            out.add(annotations[i].toString())
+        }
         return arrayOf(
             "N$name",
             "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
-            strokes.map{ "S$it" }.toList().joinToString("\n"),
-            annotations.map{it.toString()}.toList().joinToString("\n"),
+            out.joinToString("\n"),
             ""
         ).joinToString("\n")
     }
