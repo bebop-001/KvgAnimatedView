@@ -77,10 +77,11 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private var startNewLine = true
 
     private val renderedCharPaint : Paint   // the stroked character
-    private val ghostCharPaint : Paint      // blured character behind stroked char.
-    private val cursorPaint : Paint         // a cursor to highlight the stroke.
+    private val ghostCharPaint : Paint      // blurred character behind stroked char.
+    private val blurredCursorPaint : Paint  // a cursor to highlight the stroke.
+    private val dotCursorPaint : Paint      // a cursor to highlight the stroke.
     private val textPaint : Paint           // annotation text for stroke order.
-    private val textBgPaint : Paint         // blured text behind annotation in
+    private val textBgPaint : Paint         // blurred text behind annotation in
                                             // same color as background to make text
                                             // standout
     private val gridPaint : Paint           // the grid
@@ -110,9 +111,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             return default.attrDpToPix()
         }
         throw KvgAnimateException(
-            this ?: "null" + ": not valid dp value.  " +
-            "Please assign AnimatorView layout_width " +
-            "and layout_height in dp units.")
+            this ?: ("null" + ": not valid dp value.  " +
+                    "Please assign AnimatorView layout_width " +
+                    "and layout_height in dp units.")
+        )
     }
     // use if default is a resource id
     private fun String?.attrDpToPix(resId : Int) : Float =
@@ -121,6 +123,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         if (this != null) {
             val match = "^(\\d+(?:.\\d+)*)sp$".toRegex().find(this)
             if (match != null) {
+                @Suppress("DEPRECATION")
                 return match.groupValues[1].toFloat() *
                         resources.displayMetrics.scaledDensity
             }
@@ -129,8 +132,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             return default.attrSpToPix()
         }
         throw KvgAnimateException(
-            this ?: "null" + ": not valid sp value.  " +
-            "Please assign AnimatorView text_size in sp units." )
+            this ?: ("null" + ": not valid sp value.  " +
+                    "Please assign AnimatorView text_size in sp units.")
+        )
     }
     // use if default is a resource id
     private fun String?.attrSpToPix(resId : Int) : Float =
@@ -158,7 +162,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             return default.attrToColor()
         }
         throw KvgAnimateException(
-            this ?: "null" + ": not valid color value or resource id.")
+            this ?: ("null" + ": not valid color value or resource id.")
+        )
     }
     // use if default is a resource id
     private fun String?.attrToColor(resId : Int) : Int =
@@ -184,7 +189,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         animateStrokeColor = attrs.getAttributeValue(appNameSpace, "animate_stroke_color")
             .attrToColor("#0D47A1")
         cursorColor = attrs.getAttributeValue(appNameSpace, "animate_cursor_color")
-            .attrToColor(android.R.color.holo_orange_dark)
+            .attrToColor(android.R.color.holo_red_dark)
 
         annotateTextSize = attrs.getAttributeValue(appNameSpace, "annotate_text_size")
             .attrSpToPix("20sp")
@@ -206,7 +211,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
-        // used to paint a blured version of the character
+        // used to paint a blurred version of the character
         // so user can see what's being painted.
         ghostCharPaint = Paint()
         with(ghostCharPaint) {
@@ -221,8 +226,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
         // we put a cursor on the char in this color
         // to show the movement of the brush.
-        cursorPaint = Paint()
-        with(cursorPaint) {
+        blurredCursorPaint = Paint()
+        with(blurredCursorPaint) {
             color = cursorColor
             strokeWidth = animateStrokeWidth * 0.1f
             style = Paint.Style.FILL_AND_STROKE
@@ -230,6 +235,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 BlurMaskFilter(
                     animateStrokeWidth * 0.5f, BlurMaskFilter.Blur.NORMAL)
             )
+        }
+        dotCursorPaint = Paint()
+        with(dotCursorPaint) {
+            color = cursorColor
+            strokeWidth = animateStrokeWidth * 0.1f
+            style = Paint.Style.FILL_AND_STROKE
+
         }
         textPaint = Paint()
         with(textPaint) {
@@ -272,12 +284,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     fun setAnimateSpeed(speedIn: Int) {
         animateSteps = speed[speedIn]
     }
-    fun KvgStrokedChar.getPaths() : Array<Path> {
+    private fun KvgStrokedChar.getPaths() : Array<Path> {
         operator fun Array<Float>.component6() = this[5]
         val paths = mutableListOf(Path())
         strokes.forEach { stroke ->
             val p = Path()
-            stroke.segments.forEach {
+            stroke.absSegments.forEach {
                 val op = it.op; val coord = it.coord
                 when (op) {
                     "M" -> {
@@ -390,7 +402,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     else {
                         renderedCharPath.lineTo(pos[0], pos[1])
                         canvas.drawCircle(pos[0], pos[1],
-                            0.5f * animateStrokeWidth, cursorPaint)
+                            0.5f * animateStrokeWidth, blurredCursorPaint)
                         // Catch end points as we go.
                     }
                 }
@@ -408,20 +420,21 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
+            for(sc in 0 until strokePathCounter) {
+                val annotation = strokeAnnotations[sc]
+                // Paint a white background first to make text
+                // stand out, then paint the text.
+                canvas.renderText(annotation, textBgPaint)
+                canvas.renderText(annotation, textBgPaint)
+                canvas.renderText(annotation, textPaint)
+            }
             if (strokePathCounter == strokedPaths.size) {
-                for (annotation in strokeAnnotations) {
-                    // Paint a white background first to make text
-                    // stand out, then paint the text.
-                    canvas.renderText(annotation, textBgPaint)
-                    canvas.renderText(annotation, textBgPaint)
-                    canvas.renderText(annotation, textPaint)
-                }
                 canvas.drawCircle(pos[0], pos[1],
-                    0.5f * animateStrokeWidth, textPaint)
+                    0.5f * animateStrokeWidth, dotCursorPaint)
             }
             else {
                 canvas.drawCircle(pos[0], pos[1],
-                    0.5f * animateStrokeWidth, cursorPaint)
+                    0.5f * animateStrokeWidth, blurredCursorPaint)
             }
             // Log.d("draw", "${pos[0]},${pos[1]}")
         }

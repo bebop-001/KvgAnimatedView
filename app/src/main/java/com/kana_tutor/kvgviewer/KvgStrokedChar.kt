@@ -56,7 +56,7 @@ class KvgStrokedChar (
     val annotations : Array<KvgAnnotation>
         get() = _annotations.toTypedArray()
     class KvgStroke (strokeIn : String) {
-        val segments = mutableListOf<KvgStrokeSegment>()
+        val absSegments = mutableListOf<KvgStrokeSegment>()
         init {
             var absX = 0f; var absY = 0f
             fun Array<Float>.toAbs() : Array<Float> {
@@ -70,24 +70,24 @@ class KvgStrokedChar (
             operator fun <Float> Array<Float>.component6() = this[5]
             var xReflection = 0f; var yReflection = 0f
             @Suppress("UNUSED_VARIABLE")
-            fun saveAbsSeg(op: String, coord:Array<Float>) {
+            fun saveToAbsSeg(op: String, coord:Array<Float>) {
                 when (op) {
                     "L", "M" -> {
                         absX = coord[0]; absY = coord[1]
-                        segments.add(
+                        absSegments.add(
                             KvgStrokeSegment(
                             op, coord)
                         )
                     }
                     "l", "m" -> {
-                        saveAbsSeg(op.uppercase(), coord.toAbs())
+                        saveToAbsSeg(op.uppercase(), coord.toAbs())
                     }
                     "c" -> {
                         var cc = coord.copyOf()
                         do {
                             val c = cc.sliceArray(0..5)
                             if (cc.isNotEmpty()) cc = cc.sliceArray(6..cc.lastIndex)
-                            saveAbsSeg("C", c.toAbs())
+                            saveToAbsSeg("C", c.toAbs())
                         } while (cc.isNotEmpty())
                     }
                     "C" -> {
@@ -101,16 +101,16 @@ class KvgStrokedChar (
                             xReflection = (2*x2) - x1
                             yReflection = (2*y2) - y1
                             absX =  coord[coord.lastIndex - 1]; absY = coord[coord.lastIndex]
-                            segments.add(
+                            absSegments.add(
                                 KvgStrokeSegment(
                                 op, c)
                             )
                         } while (cc.isNotEmpty())
                     }
-                    "s" -> saveAbsSeg("S", coord.toAbs())
+                    "s" -> saveToAbsSeg("S", coord.toAbs())
                     "S" -> {
                         val (x0,y0,x1,y1) = coord
-                        saveAbsSeg("C",
+                        saveToAbsSeg("C",
                             arrayOf(xReflection,yReflection,x0,y0,x1,y1))
                     }
                     else -> throw SvgConvertException (
@@ -133,12 +133,12 @@ class KvgStrokedChar (
                     .findAll(floatStr)
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
-                saveAbsSeg(op, coord)
+                saveToAbsSeg(op, coord)
                 // println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
-            return segments.joinToString("")
+            return absSegments.joinToString("")
         }
     }
 

@@ -17,7 +17,6 @@ package com.kana_tutor.kvgviewer
 
 import android.app.Activity
 import android.content.SharedPreferences
-import android.content.res.AssetFileDescriptor
 import android.os.Bundle
 import android.util.Log
 import android.view.ContextMenu
@@ -28,7 +27,7 @@ import android.view.View
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
 import java.io.BufferedReader
-import java.io.InputStream
+
 private const val TAG = "KanaAnimator"
 // interface to the AnimatorView.
 class KanaAnimator : Activity() {
@@ -73,19 +72,18 @@ class KanaAnimator : Activity() {
                 intent = null
                 // reduce string in to first character only.
                 val rc = renderChar.toCharArray()[0]
-                val fname = "paths/儲.avg"
-                val strokedChar: KvgStrokedChar? = null
+                val fName = "paths/儲.avg"
+                var strokedChar: KvgStrokedChar? = null
                 try {
-                    val reader: BufferedReader = assets.open(fname).bufferedReader()
-                    val strokedChar = KvgStrokedChar(
+                    val reader: BufferedReader = assets.open(fName).bufferedReader()
+                    strokedChar = KvgStrokedChar(
                         String.format("%05x", rc.toInt()),
                         renderChar.toCharArray()[0],
                         reader)
                     animatorView.setStrokedChar(strokedChar)
-
                 }
                 catch (e:Exception) {
-                    val mess = "open $fname dailed: $e"
+                    val mess = "open $fName Failed: $e"
                     Toast.makeText(this,mess, Toast.LENGTH_LONG).show()
                     Log.d(TAG, mess)
                 }
