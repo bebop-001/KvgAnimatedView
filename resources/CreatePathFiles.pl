@@ -7,6 +7,7 @@ use Encode;
 use File::Basename 'fileparse';
 use Storable qw(retrieve);
 use Cwd qw(abs_path getcwd);
+use File::Basename;
 # Catch path and name to executable.  If we're using a symbolic
 # link, path goes to real executable but name is of the link.
 my ($ExecPath, $ExecName) = (abs_path($0) =~ m{^(.*/)(.*)});
@@ -42,6 +43,7 @@ binmode(STDERR, ':utf8');
 };
 my $USAGE = "USAGE: $funcName [-f] [-k|-K|-a] [char]
     -k  : Create only the kana files
+    -K  : Create only the Kanji files (default)
     -a  : Create all files
     char: Create a path file for 'char' only.
     Kvg svg files should be under the svg directory under the
@@ -50,7 +52,7 @@ my $USAGE = "USAGE: $funcName [-f] [-k|-K|-a] [char]
 ";
 die $USAGE, "\nNo arguments.\n" unless @ARGV;
 my @args = @ARGV;
-my ($RENDER_CHAR, $RENDER_MODE);
+my ($RENDER_CHAR, $RENDER_MODE) = (undef, "kanji");
 while(defined(my $arg = shift @args)) {
     if ($arg =~ /^-([akK])$/) {
         $RENDER_MODE = ($1 eq "a") ? "all"
@@ -90,42 +92,97 @@ sub ordIsIn {
 }
 my @renderFiles = grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
 
+# <g id="kvg:05132-Hyougai" kvg:element="儲">
+my $idRegex = qr{^\s*<g\s+
+    id="([^"]+)"
+    [^:]+:
+    element="([^"]+)"\s*>
+}x;
+my $pathRegex = qr{^\s*<path\s.*\sd="([^"]+")};
+my $widthRegex = qr {
+    <svg\s.*width="([^"]+)".*height="([^"]++)
+}x;
+# It turns out that for the text transform matrix used by
+# kanjiVG, the last two values are the x/y location for text
+# placement.
+my $textRegex = qr{
+    ^\s*<text.*matrix\([^)]+   # text starts with "<text transform="
+    \s+(\d+(?:\.\d+.)*)        # Followed by the a transform matrix.
+    \s+(\d+(?:\.\d+)*)\)[^>]+> # last values in the matrix are x,y
+    ([^<]+)                    # and the text.
+}x;
 sub Get {
+    my @curXY;
+    my $relToAbs = sub {
+        my @xy = $_[0] =~ m{(\d+(?:\.\d+)*)}g;
+        my @abs;
+        while (@xy) {
+            $xy[0] += $curXY[0];
+            $xy[1] += $curXY[1];
+            push(@abs, shift(@xy));
+            push(@abs, shift(@xy));
+        }
+        # coerce to float.
+        @abs = map {
+            (/\.\d+/) ? $_ : sprintf('%.1f', $_)
+        } @abs;
+        my $rv = join(',', @abs);
+        # for svg, you don't need a ',' for separation
+        # of negative numbers.
+        $rv =~ s/,-/-/g;
+        return $rv;
+    };
+    my $toAbsOps = sub {
+        my @ops = $_[0] =~ m{([a-zA-Z][^a-zA-Z]+)}g;
+        my @rv;
+        for my $op (@ops) {
+            if ($op =~ /^M/) {
+                @curXY = $op =~ m{(-*\d+(?:\.\d+)*)}g;
+                push @rv, $op }
+            elsif ($op =~ /^c/) {
+                my $abs = $relToAbs->($op);
+                push(@rv, "C$abs");
+            }
+            else {
+                die "Unhandled path op:$op\n";
+            }
+        }
+        return join('', @rv);
+    };
+    my @pathInfo;
     my $file = $_[0];
     open(F, $file) || die "Failed to open $file for read:$!\\n";
-    my @paths;
-    push @paths, "N" . toChr($file);
-    my $svgRegex = qr {
-        <svg\s.*width="([^"]+)".*height="([^"]++)
-    }x;
-    # It turns out that for the text transform matrix used by
-    # kanjiVG, the last two values are the x/y location for text
-    # placement.
-    my $textRegex = qr{
-        ^\s*<text.*matrix\([^)]+   # text starts with "<text transform="
-        \s+(\d+(?:\.\d+.)*)        # Followed by the a transform matrix.
-        \s+(\d+(?:\.\d+)*)\)[^>]+> # last values in the matrix are x,y
-        ([^<]+)                    # and the text.
-    }x;
-    my ($width, $height, $h_scale_factor, $v_scale_factor);
+    my ($width, @paths, @annotations, $fname, $renderChar);
+    my $lineNumber = 0;
+    $fname = "N" . basename $file;
     while (<F>) {
-        # use width and hight to calculate a scale factor for
-        # normalizing char to be 100 x 100 pix
-        if ($_ =~ $svgRegex) {
-            $width = $1; $height = $2;
-            push @paths, "W$1,$2";
-        }
-        elsif (/<path/) {
-            my $p = ($_ =~ /\s+d="([^"]+)/)[0];
-            my @p = grep(length, split(/([a-zA-Z])/, $p));
-            push @paths, join('', @p);
-        }
+        chomp;
+        $lineNumber++;
+        if ($_ =~ $pathRegex) {
+            push @paths, $1 }
         elsif ($_ =~ $textRegex) {
-            my ($x, $y, $text) = ($1, $2, $3);
-            push @paths, "X$x,$y,$text";
+            push @annotations, "X$1,$2,$3"}
+        elsif ($_ =~ $widthRegex) {
+            $width = "W$1,$2" }
+        elsif ($_ =~ $idRegex) {
+            $renderChar = "C$2" unless(defined $renderChar); }
+        else {
+            # print "$_\n";
         }
     }
-    return join("\n", @paths);
+    if ($#paths != $#annotations) {
+        die "Expected 1 annotation per path. ",
+            scalar @annotations, " != ", scalar @paths, "\n";
+    }
+    push @pathInfo, $fname, $renderChar, $width;
+    # interleave paths and annotation so path annotation
+    # is displayed as path is finished.
+    foreach my $i (0..$#paths) {
+        # push @pathInfo, "S" . $toAbsOps->($paths[$i]);
+        push @pathInfo, "S" . $paths[$i];
+        push @pathInfo, $annotations[$i];
+    }
+    return @pathInfo;
 }
 
 my @kana = qw (
@@ -158,18 +215,17 @@ print OUT $HEADER;
 close OUT;
 foreach my $renderFile (@renderFiles) {
     if (-f $renderFile) {
-        my $paths = Get($renderFile);
         my ($ord, $other) = $renderFile =~ m{/([0-9a-fA-f]{5})([^.]+)*.svg$};
         my $renderChr = chr(hex($ord));
+        my @paths = Get($renderFile);
         my $pathFile = "$pathFileDir/$renderChr" . ($other || '') . ".avg";
         open (OUT2, "> $pathFile") || die "open $pathFile for output FAILED:$!\n";
         binmode(OUT2, ':utf8');
-        print OUT2 $paths, "\n";
+        print OUT2 join("\n", @paths, "");
         printf("$renderChr ");
         close OUT2;
     }
 }
 print "\n";
 close OUT;
-die "@missing\n" if @missing;
 exit;
