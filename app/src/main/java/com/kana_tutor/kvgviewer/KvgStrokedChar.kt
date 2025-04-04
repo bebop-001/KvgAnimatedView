@@ -45,9 +45,7 @@ class KvgStrokedChar (
             return "X$x,$y,$text"
         }
     }
-    private val _annotations = mutableListOf<KvgAnnotation>()
-    val annotations : Array<KvgAnnotation>
-        get() = _annotations.toTypedArray()
+    val annotations = mutableListOf<KvgAnnotation>()
     class KvgStroke (strokeIn : String) {
         val absSegments = mutableListOf<KvgStrokeSegment>()
         init {
@@ -144,10 +142,13 @@ class KvgStrokedChar (
             lineNumber++
             return l != null
         }
+        val opNoIdRegex = """(.)(.*)""".toRegex()
+        val argToPathRegex ="""(^\d+)(.*)""".toRegex()
+        val commasSplitRegex = """\s*,\s*""".toRegex()
+
         while (fileHandle.nextLine()) {
             if (line.isNotEmpty()){
-                val (op, arg) = "(.)(.*)".toRegex()
-                    .find(line)!!.destructured
+                val (op, arg) = opNoIdRegex.find(line)!!.destructured
                 when (op) {
                     "N" -> { name = arg }
                     "C" -> { renderChar = arg }
@@ -158,10 +159,13 @@ class KvgStrokedChar (
                             .toFloatArray()
                         dimensions = Pair(posX, posY)
                     }
-                    "S" -> strokes.add(KvgStroke(arg))
+                    "S" -> {
+                        val (id, path) = argToPathRegex.find(arg)!!.destructured
+                        strokes.add(KvgStroke(path))
+                    }
                     "X" -> {// text
-                        val (posX, posY, text) = arg.split(",")
-                        _annotations.add(KvgAnnotation(
+                        val (id, posX, posY, text) = arg.split(commasSplitRegex)
+                        annotations.add(KvgAnnotation(
                             Pair(posX.toFloat(), posY.toFloat()), text
                         ))
                     }
