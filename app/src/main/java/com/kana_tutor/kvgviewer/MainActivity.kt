@@ -21,6 +21,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -30,21 +31,31 @@ class MainActivity : AppCompatActivity() {
         lateinit var sharedPreferences: SharedPreferences
             private set
     }
+    val pathFiles = mutableListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         sharedPreferences = getSharedPreferences(
             getString(R.string.app_name), Context.MODE_PRIVATE)
+        pathFiles.addAll(
+            assets.list("paths")!!
+                .map{"paths/$it"}
+        )
+        val animateButtvn = findViewById<Button>(R.id.animate_char_button)
+        animateButtvn.setOnClickListener { animationOnClick() }
     }
 
-    fun animationOnClick(view: View) {
+    fun animationOnClick() {
         val tv = findViewById<TextView>(R.id.renderChar_TXT)
 
-        val txt = tv.text
-        if (txt.isNotEmpty()) {
-            val renderChar = txt
+        val renderChar = tv.text.toString().trim()
+        val renderFile = pathFiles.filter {
+            it.contains(renderChar)
+        }.first()
+        if (renderFile.isNotEmpty()) {
             val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
-            startAnimator.putExtra("renderChar", renderChar.toString())
+            startAnimator.putExtra("renderChar", renderChar)
+            startAnimator.putExtra("renderFile", renderFile)
             startActivity(startAnimator)
         }
         else {

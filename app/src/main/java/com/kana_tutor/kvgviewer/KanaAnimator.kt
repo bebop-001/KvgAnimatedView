@@ -64,22 +64,17 @@ class KanaAnimator : Activity() {
 
         // If we received an intent from the main app. set up for animation.
         if (intent != null) {
-            if (intent.getStringExtra("renderChar") != null) {
+            if (intent.getStringExtra("renderFile") != null) {
                 renderChar = intent.getStringExtra("renderChar")!!
+                val fName = intent.getStringExtra("renderFile")!!
                 prefs.edit()
                     .putString("renderChar", renderChar)
                     .apply()
                 intent = null
-                // reduce string in to first character only.
-                val rc = renderChar.toCharArray()[0]
-                val fName = "paths/儲.avg"
                 var strokedChar: KvgStrokedChar? = null
                 try {
                     val reader: BufferedReader = assets.open(fName).bufferedReader()
-                    strokedChar = KvgStrokedChar(
-                        String.format("%05x", rc.toInt()),
-                        renderChar.toCharArray()[0],
-                        reader)
+                    strokedChar = KvgStrokedChar(reader)
                     animatorView.setStrokedChar(strokedChar)
                 }
                 catch (e:Exception) {

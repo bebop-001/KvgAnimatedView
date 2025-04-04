@@ -25,27 +25,20 @@ class SvgConvertException(message:String) : Exception (message)
 private const val TAG = "KvgStrokedChar"
 // based on https://www.baeldung.com/kotlin-builder-pattern
 class KvgStrokedChar (
-    private val name : String,
-    private val renderChar : Char,
     fileHandle : BufferedReader
 ) {
+    private var name = ""
+    private var renderChar = ""
     // width/height
-    private var _dimensions :  Pair<Float,Float>? = null
-    val dimensions : Pair<Float,Float>
-        get() {
-            if (_dimensions == null) throw RuntimeException(
-                "KvgStrokedChar $name: dimensions uninitialized"
-            )
-            return _dimensions!!
-        }
-    private val _strokes = mutableListOf<KvgStroke>()
+    lateinit var dimensions : Pair<Float,Float>
+        private set
+    var strokes = mutableListOf<KvgStroke>()
+        private set
     class KvgStrokeSegment(val op: String, val coord: Array<Float>) {
         override fun toString(): String {
             return op + coord.joinToString(",")
         }
     }
-    val strokes :Array<KvgStroke>
-        get() = _strokes.toTypedArray()
     data class KvgAnnotation(val point : Pair<Float,Float>, val text : String) {
         override fun toString(): String {
             val(x,y) = point
@@ -156,16 +149,16 @@ class KvgStrokedChar (
                 val (op, arg) = "(.)(.*)".toRegex()
                     .find(line)!!.destructured
                 when (op) {
-                    "N" -> {/* name */}
-                    "C" -> {/* renderChar */}
+                    "N" -> { name = arg }
+                    "C" -> { renderChar = arg }
                     "W" -> {// dimensions
                         val (posX, posY) = arg
                             .split(",")
                             .map { it.toFloat() }
                             .toFloatArray()
-                        _dimensions = Pair(posX, posY)
+                        dimensions = Pair(posX, posY)
                     }
-                    "S" -> _strokes.add(KvgStroke(arg))
+                    "S" -> strokes.add(KvgStroke(arg))
                     "X" -> {// text
                         val (posX, posY, text) = arg.split(",")
                         _annotations.add(KvgAnnotation(
@@ -190,7 +183,7 @@ class KvgStrokedChar (
             "N$name",
             "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
-            out.joinToString("\n"),
+            "path count: " + out.size,
             ""
         ).joinToString("\n")
     }

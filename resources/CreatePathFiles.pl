@@ -41,7 +41,7 @@ binmode(STDERR, ':utf8');
 @ARGV = do {
     @ARGV = map { decode 'UTF8', $_ } @ARGV;
 };
-my $USAGE = "USAGE: $funcName [-f] [-k|-K|-a] [char]
+my $USAGE = "USAGE: $funcName [-f=svgFile] [-k|-K|-a] [char]
     -k  : Create only the kana files
     -K  : Create only the Kanji files (default)
     -a  : Create all files
@@ -51,10 +51,22 @@ my $USAGE = "USAGE: $funcName [-f] [-k|-K|-a] [char]
     directory.
 ";
 die $USAGE, "\nNo arguments.\n" unless @ARGV;
+my $svgFilesDir = "$funcDir/kanji";
+unless (-d $svgFilesDir) {
+    die $USAGE, "Path output directory $svgFilesDir not found.\n"}
+my $pathFileDir = "$funcDir/paths";
+unless (-d $pathFileDir) {
+    die $USAGE, "Path output directory $pathFileDir not found.\n"}
 my @args = @ARGV;
-my ($RENDER_CHAR, $RENDER_MODE) = (undef, "kanji");
+my ($RENDER_CHAR, $RENDER_MODE, $RENDER_FILE) = (undef, "kanji", undef);
 while(defined(my $arg = shift @args)) {
-    if ($arg =~ /^-([akK])$/) {
+    if ($arg =~ /-f=(.*)/) {
+        if (-f $1) {
+            $RENDER_FILE = $1 }
+        else {
+            die "$arg: $1 not a file.\n"}
+    }
+    elsif ($arg =~ /^-([akK])$/) {
         $RENDER_MODE = ($1 eq "a") ? "all"
             : ($1 eq "k") ? "kana"
                 : "kanji";
@@ -64,16 +76,10 @@ while(defined(my $arg = shift @args)) {
     }
     last;
 }
-unless (defined $RENDER_MODE) {
+unless (defined $RENDER_MODE || defined $RENDER_FILE) {
     die $USAGE, "Please use render mofe '-a', '-k', or '-K'.\n";
 }
 
-my $svgFilesDir = "$funcDir/kanji";
-unless (-d $svgFilesDir) {
-    die $USAGE, "Path output directory $svgFilesDir not found.\n"}
-my $pathFileDir = "$funcDir/paths";
-unless (-d $pathFileDir) {
-    die $USAGE, "Path output directory $pathFileDir not found.\n"}
 # map char => svg filename.
 my %chrRange = (
     hiragana => qr/[\x{3041}-\x{3096}]/,
@@ -82,22 +88,18 @@ my %chrRange = (
 );
 my $ordRegex = qr{^.*/([a-fA-F0-9]{5})};
 sub toOrd { ($_[0] =~ $ordRegex) [0] }
-sub toChr { chr(hex(toOrd($_[0]))) }
+sub toChar { chr(hex(toOrd($_[0]))) }
 sub ordIsIn {
     my ($name, $range) = @_;
-    my $chr = toChr($name);
+    my $chr = toChar($name);
     return ($range eq "all") ? $chr
         : ($chr =~ $chrRange{$range}) ? $chr
             : undef
 }
-my @renderFiles = grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
+my @renderFiles = (defined $RENDER_FILE)
+    ? ( $RENDER_FILE )
+    : grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
 
-# <g id="kvg:05132-Hyougai" kvg:element="儲">
-my $idRegex = qr{^\s*<g\s+
-    id="([^"]+)"
-    [^:]+:
-    element="([^"]+)"\s*>
-}x;
 my $pathRegex = qr{^\s*<path\s.*\sd="([^"]+")};
 my $widthRegex = qr {
     <svg\s.*width="([^"]+)".*height="([^"]++)
@@ -106,83 +108,67 @@ my $widthRegex = qr {
 # kanjiVG, the last two values are the x/y location for text
 # placement.
 my $textRegex = qr{
-    ^\s*<text.*matrix\([^)]+   # text starts with "<text transform="
-    \s+(\d+(?:\.\d+.)*)        # Followed by the a transform matrix.
-    \s+(\d+(?:\.\d+)*)\)[^>]+> # last values in the matrix are x,y
-    ([^<]+)                    # and the text.
+    ^\s*<text.*matrix\(   # text starts with "<text transform="matrix(`h
+    (\d.*\d)[^\d]+$
 }x;
+my @failed;
 sub Get {
     my @curXY;
-    my $relToAbs = sub {
-        my @xy = $_[0] =~ m{(\d+(?:\.\d+)*)}g;
-        my @abs;
-        while (@xy) {
-            $xy[0] += $curXY[0];
-            $xy[1] += $curXY[1];
-            push(@abs, shift(@xy));
-            push(@abs, shift(@xy));
-        }
-        # coerce to float.
-        @abs = map {
-            (/\.\d+/) ? $_ : sprintf('%.1f', $_)
-        } @abs;
-        my $rv = join(',', @abs);
-        # for svg, you don't need a ',' for separation
-        # of negative numbers.
-        $rv =~ s/,-/-/g;
-        return $rv;
-    };
-    my $toAbsOps = sub {
-        my @ops = $_[0] =~ m{([a-zA-Z][^a-zA-Z]+)}g;
-        my @rv;
-        for my $op (@ops) {
-            if ($op =~ /^M/) {
-                @curXY = $op =~ m{(-*\d+(?:\.\d+)*)}g;
-                push @rv, $op }
-            elsif ($op =~ /^c/) {
-                my $abs = $relToAbs->($op);
-                push(@rv, "C$abs");
-            }
-            else {
-                die "Unhandled path op:$op\n";
-            }
-        }
-        return join('', @rv);
-    };
     my @pathInfo;
     my $file = $_[0];
     open(F, $file) || die "Failed to open $file for read:$!\\n";
-    my ($width, @paths, @annotations, $fname, $renderChar);
+    my ($width, @paths, @annotations, $fName, $renderedChar);
     my $lineNumber = 0;
-    $fname = "N" . basename $file;
+    $fName = basename $file;
+    $renderedChar = toChar($file);
     while (<F>) {
         chomp;
         $lineNumber++;
         if ($_ =~ $pathRegex) {
             push @paths, $1 }
-        elsif ($_ =~ $textRegex) {
-            push @annotations, "X$1,$2,$3"}
+        elsif($_=~ $textRegex) { 
+            my($x, $y, $id) = ($1 =~ m{([\d.]+)}g)[-3..-1];
+            push @annotations, "X$x,$y,$id";
+        }
         elsif ($_ =~ $widthRegex) {
             $width = "W$1,$2" }
-        elsif ($_ =~ $idRegex) {
-            $renderChar = "C$2" unless(defined $renderChar); }
         else {
             # print "$_\n";
         }
     }
     if ($#paths != $#annotations) {
-        die "Expected 1 annotation per path. ",
-            scalar @annotations, " != ", scalar @paths, "\n";
+        my $expected = scalar @annotations . " != " . scalar @paths;
+        push (@failed, "$renderedChar:$fName:$expected");
     }
-    push @pathInfo, $fname, $renderChar, $width;
+    push @pathInfo, 'N' . $fName, 'C' . $renderedChar, $width;
     # interleave paths and annotation so path annotation
     # is displayed as path is finished.
     foreach my $i (0..$#paths) {
         # push @pathInfo, "S" . $toAbsOps->($paths[$i]);
-        push @pathInfo, "S" . $paths[$i];
-        push @pathInfo, $annotations[$i];
+        push @pathInfo, "S" . $paths[$i] if(defined $paths[$i]);
+        push @pathInfo, $annotations[$i] if(defined $annotations[$i]);
     }
     return @pathInfo;
+}
+sub getAvgFile {
+    my $svgFile = shift @_;
+    if (-f $svgFile) {
+        my ($ord, $other) = $svgFile =~ m{/([0-9a-fA-f]{5})([^.]+)*.svg$};
+        my $renderedChar = chr(hex($ord));
+        my @paths = Get($svgFile);
+        my $pathFile = "$pathFileDir/$renderedChar" . ($other || '') . ".avg";
+        open (OUT2, "> $pathFile") || die "open $pathFile for output FAILED:$!\n";
+        binmode(OUT2, ':utf8');
+        if (grep !defined $_, @paths) {
+            push @failed, "$svgFile: undef.";
+            print "* ";
+        }
+        else {
+            print OUT2 join("\n", @paths, "");
+            print "$renderedChar ";
+        }
+        close OUT2;
+    }
 }
 
 my @kana = qw (
@@ -214,18 +200,10 @@ binmode(OUT, ':utf8');
 print OUT $HEADER;
 close OUT;
 foreach my $renderFile (@renderFiles) {
-    if (-f $renderFile) {
-        my ($ord, $other) = $renderFile =~ m{/([0-9a-fA-f]{5})([^.]+)*.svg$};
-        my $renderChr = chr(hex($ord));
-        my @paths = Get($renderFile);
-        my $pathFile = "$pathFileDir/$renderChr" . ($other || '') . ".avg";
-        open (OUT2, "> $pathFile") || die "open $pathFile for output FAILED:$!\n";
-        binmode(OUT2, ':utf8');
-        print OUT2 join("\n", @paths, "");
-        printf("$renderChr ");
-        close OUT2;
-    }
+    getAvgFile($renderFile);
 }
-print "\n";
-close OUT;
+if (@failed) {
+    @failed =  map {$_ =~ s{:[^:]+/}{}; $_ } @failed;
+    print STDERR "Problems:\n\t", join("\n\t", @failed), "\n";
+}
 exit;
