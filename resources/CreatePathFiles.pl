@@ -100,17 +100,14 @@ my @renderFiles = (defined $RENDER_FILE)
     ? ( $RENDER_FILE )
     : grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
 
-my $pathRegex = qr{^\s*<path\s.*\sd="([^"]+")};
+my $pathRegex = qr{<path\s+id=.*s(\d+)".*\sd="([^"]+")};
 my $widthRegex = qr {
     <svg\s.*width="([^"]+)".*height="([^"]++)
 }x;
 # It turns out that for the text transform matrix used by
 # kanjiVG, the last two values are the x/y location for text
 # placement.
-my $textRegex = qr{
-    ^\s*<text.*matrix\(   # text starts with "<text transform="matrix(`h
-    (\d.*\d)[^\d]+$
-}x;
+my $textRegex = qr{^\s*<text.*matrix\(([^>]+\D+\d+)};
 my @failed;
 sub Get {
     my @curXY;
@@ -125,10 +122,10 @@ sub Get {
         chomp;
         $lineNumber++;
         if ($_ =~ $pathRegex) {
-            push @paths, $1 }
+            push @paths, "S$1$2" }
         elsif($_=~ $textRegex) { 
             my($x, $y, $id) = ($1 =~ m{([\d.]+)}g)[-3..-1];
-            push @annotations, "X$x,$y,$id";
+            push @annotations, "X$id,$x,$y,$id";
         }
         elsif ($_ =~ $widthRegex) {
             $width = "W$1,$2" }
@@ -137,15 +134,27 @@ sub Get {
         }
     }
     if ($#paths != $#annotations) {
-        my $expected = scalar @annotations . " != " . scalar @paths;
-        push (@failed, "$renderedChar:$fName:$expected");
+        my %ids;
+        for (@paths, @annotations) {
+            my ($type, $id) = m{^(.(\d+))};
+            push @{$ids{$id}}, $type;
+        }
+        my @missing = grep scalar @{$ids{$_}} != 2, keys %ids;
+        my @expected;
+        for my $i (sort {$a <=> $b} @missing) {
+            push @expected, ($ids{$i}[0] =~ /^S/)
+                ? "$ids{$i}[0]: no text"
+                : "$ids{$i}[0]: no path";
+        }
+        push (@failed, "$renderedChar:$fName: " .
+            scalar @paths . " paths: " .
+            join(", ", @expected));
     }
     push @pathInfo, 'N' . $fName, 'C' . $renderedChar, $width;
     # interleave paths and annotation so path annotation
     # is displayed as path is finished.
     foreach my $i (0..$#paths) {
-        # push @pathInfo, "S" . $toAbsOps->($paths[$i]);
-        push @pathInfo, "S" . $paths[$i] if(defined $paths[$i]);
+        push @pathInfo, $paths[$i] if(defined $paths[$i]);
         push @pathInfo, $annotations[$i] if(defined $annotations[$i]);
     }
     return @pathInfo;
