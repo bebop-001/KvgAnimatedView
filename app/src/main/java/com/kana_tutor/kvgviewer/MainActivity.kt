@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
             it.contains(renderChar)
         }
         if (renderFile.isNotEmpty()) {
-            val startAnimator = Intent(applicationContext, KanaAnimator::class.java)
+            val startAnimator = Intent(applicationContext, KanjiAnimator::class.java)
             startAnimator.putExtra("renderChar", renderChar)
             startAnimator.putExtra("renderFile", renderFile)
             startActivity(startAnimator)
