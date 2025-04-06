@@ -28,6 +28,7 @@ import java.lang.RuntimeException
 import com.kana_tutor.kvgviewer.KvgChar.KvgAnnotation
 import com.kana_tutor.kvgviewer.KvgChar.KvgCharPath
 
+private const val TAG = "AnimatorView"
 // our own personal exception.
 class KvgAnimateException(message:String) : Exception (message)
 
