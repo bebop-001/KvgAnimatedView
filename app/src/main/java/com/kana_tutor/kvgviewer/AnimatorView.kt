@@ -60,7 +60,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val charPathMeasure = PathMeasure()
 
     // contains paths 'rendered' during the animation.
-    private val renderedCharPath = Path()
+    val renderedCharPath = Path()
 
     private var renderAnnotations = arrayOf<KvgAnnotation>()
     private var ghostPath =  Path()
@@ -348,8 +348,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         this.renderPaths = renderPaths
 
         // Apply the scale matrix to the annotation position.
-        renderAnnotations = strokedChar.kvgAnnotations
-            .map {it.applyScaleMatrix()}
+        val kvgAnnotations = kvgStrokeInfo.getAnnotations()
+        renderAnnotations = kvgAnnotations
+            .map {
+                it.applyScaleMatrix()}
             .toList().toTypedArray()
         startNewLine = true
         strokePathCounter = 0

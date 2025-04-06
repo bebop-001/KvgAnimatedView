@@ -125,7 +125,6 @@ class KvgChar (
         ): List<KvgAnnotation> =
             range.mapNotNull { getAnnotation(it) }.toList()
     }
-    val kvgAnnotations = mutableListOf<KvgAnnotation>()
     class KvgCharPath (strokeIn : String) {
         val absSegments = mutableListOf<KvgStrokePath>()
         init {
