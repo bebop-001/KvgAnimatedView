@@ -32,8 +32,83 @@ class KvgStrokedChar (
     // width/height
     lateinit var dimensions : Pair<Float,Float>
         private set
-    var strokes = mutableListOf<KvgStroke>()
-        private set
+    data class KvgStrokeInfo (
+        var path: KvgPath? = null,
+        var annotation: KvgAnnotation? = null
+    )
+    @Suppress("MemberVisibilityCanBePrivate")
+    class StrokeInfo {
+        private val info = mutableMapOf<Int, KvgStrokeInfo>()
+        val size: Int
+            get() = info.size
+        private val toInfo = mutableListOf<KvgStrokeInfo>()
+        private fun toInfoUpdate() {
+            toInfo.clear()
+            for(i in info.keys.sorted()) {
+                toInfo.add(info[i]!!)
+            }
+        }
+        private fun isEmpty(idx:Int) = info[idx] == null
+        fun hasPath(idx:Int) : Boolean
+            = idx < toInfo.size && toInfo[idx].path != null
+        fun hasAnnotation(idx:Int) : Boolean
+                = idx < toInfo.size && toInfo[idx].annotation != null
+        fun putPath(
+            strokeId: Int, path: KvgPath
+        ):Boolean {
+            val rv = when {
+                (hasPath(strokeId)) -> false
+                (isEmpty(strokeId)) -> {
+                    info[strokeId] = KvgStrokeInfo(path = path)
+                    true
+                }
+                else -> {
+                    info[strokeId]!!.path = path
+                    true
+                }
+            }
+            if (rv)
+                toInfoUpdate()
+            return rv
+        }
+        fun putAnnotation(
+            strokeId: Int, annotation: KvgAnnotation
+        ):Boolean {
+            val rv =  when {
+                (hasAnnotation(strokeId)) -> false
+                (isEmpty(strokeId)) -> {
+                    info[strokeId] = KvgStrokeInfo(annotation = annotation)
+                    true
+                }
+                else -> {
+                    info[strokeId]!!.annotation = annotation
+                    true
+                }
+            }
+            if (rv)
+                toInfoUpdate()
+            return rv
+        }
+        fun getKvgStrokeInfo(idx:Int): KvgStrokeInfo? =
+            if (idx < toInfo.lastIndex) toInfo[idx]
+                else null
+        fun getKvgStrokesInfo(
+            range: IntRange = 0..toInfo.size
+        ): List<KvgStrokeInfo> =
+            range.map{toInfo[it]}.toList()
+        fun getAnnotation(idx: Int): KvgAnnotation?
+                = getKvgStrokeInfo(idx)?.annotation
+        fun getPath(idx: Int): KvgPath?
+                = getKvgStrokeInfo(idx)?.path
+        fun getPaths(
+            range: IntRange = 0..toInfo.size
+        ): List<KvgPath> =
+            range.mapNotNull { getPath(it) }.toList()
+        fun getAnnotations(
+            range: IntRange = 0..toInfo.size
+        ): List<KvgAnnotation> =
+            range.mapNotNull { getAnnotation(it) }.toList()
+    }
     class KvgStrokeSegment(val op: String, val coord: Array<Float>) {
         override fun toString(): String {
             return op + coord.joinToString(",")
@@ -46,7 +121,7 @@ class KvgStrokedChar (
         }
     }
     val annotations = mutableListOf<KvgAnnotation>()
-    class KvgStroke (strokeIn : String) {
+    class KvgPath (strokeIn : String) {
         val absSegments = mutableListOf<KvgStrokeSegment>()
         init {
             var absX = 0f; var absY = 0f
@@ -114,7 +189,7 @@ class KvgStrokedChar (
                 .toList()
             if (segments.isEmpty()) {
                 throw SvgConvertException(
-                    "KvgStroke: no segments found in \"$segments\"")
+                    "KvgPath: no segments found in \"$segments\"")
             }
             for (seg in segments) {
                 val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+.,-]+)".toRegex()
@@ -125,13 +200,14 @@ class KvgStrokedChar (
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
                 saveToAbsSeg(op, coord)
-                // println("nextLine" + "KvgStroke:Segments:${segments.map { it }}")
+                // println("nextLine" + "KvgPath:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
             return absSegments.joinToString("")
         }
     }
+    val strokeInfo = StrokeInfo()
 
     init {
         var line = ""
@@ -161,11 +237,11 @@ class KvgStrokedChar (
                     }
                     "S" -> {
                         val (id, path) = argToPathRegex.find(arg)!!.destructured
-                        strokes.add(KvgStroke(path))
+                        strokeInfo.putPath(id.toInt(), KvgPath(path))
                     }
                     "X" -> {// text
                         val (id, posX, posY, text) = arg.split(commasSplitRegex)
-                        annotations.add(KvgAnnotation(
+                        strokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
                             Pair(posX.toFloat(), posY.toFloat()), text
                         ))
                     }
@@ -174,20 +250,17 @@ class KvgStrokedChar (
         }
     }
     override fun toString() : String {
-        if (strokes.size != annotations.size)
+        val pathsSize = strokeInfo.getPaths().size
+        val annotationsSize = strokeInfo.getAnnotations().size
+        if (pathsSize != annotationsSize)
             throw RuntimeException("$TAG: expected same annotation and stroke count.\n" +
-                    "Found ${strokes.size} strokes vs" +
-                    " ${annotations.size} annotations")
-        val out = mutableListOf<String>()
-        for(i in 0 until strokes.lastIndex) {
-            out.add(strokes[i].toString())
-            out.add(annotations[i].toString())
-        }
+                    "Found ${pathsSize} paths vs" +
+                    " ${annotationsSize} annotations")
         return arrayOf(
             "N$name",
             "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
-            "path count: " + out.size,
+            "path count: " + pathsSize,
             ""
         ).joinToString("\n")
     }
