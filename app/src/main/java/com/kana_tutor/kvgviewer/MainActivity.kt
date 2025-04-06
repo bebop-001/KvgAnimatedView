@@ -48,17 +48,21 @@ class MainActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.renderChar_TXT)
 
         val renderChar = tv.text.toString().trim()
-        val renderFile = pathFiles.first {
+        val renderFile = pathFiles.firstOrNull() {
             it.contains(renderChar)
         }
-        if (renderFile.isNotEmpty()) {
+        if (renderFile != null) {
             val startAnimator = Intent(applicationContext, Animator::class.java)
             startAnimator.putExtra("renderChar", renderChar)
             startAnimator.putExtra("renderFile", renderFile)
             startActivity(startAnimator)
         }
         else {
-            Toast.makeText(this, "skipping empty input", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,
+                if(renderChar.isEmpty()) "skipping empty input"
+                else "Can't render \"$renderChar\". Char not found.",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
