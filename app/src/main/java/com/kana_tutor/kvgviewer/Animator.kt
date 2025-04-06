@@ -53,9 +53,9 @@ class Animator : Activity() {
         animatorView.setAnimateSpeed(animateSpeed)
         animatorView.setOnClickListener {
             // re-draw the animation.
+            // Reset
+            animatorView.resetPaths = true
             animatorView.strokePathCounter = 0
-            // Clear any previously rendered paths.
-            animatorView.renderedCharPath.reset()
             animatorView.invalidate()
         }
         // If user touches screen outside of the animate view, exit.
@@ -75,7 +75,9 @@ class Animator : Activity() {
                 intent = null
                 var strokedChar: KvgChar? = null
                 try {
-                    val reader: BufferedReader = assets.open(fName).bufferedReader()
+                    val reader: BufferedReader = assets.open(
+                        fName
+                    ).bufferedReader()
                     strokedChar = KvgChar(reader)
                     animatorView.setStrokedChar(strokedChar)
                 }
