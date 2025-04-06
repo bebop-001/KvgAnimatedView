@@ -38,7 +38,9 @@ class KvgChar (
             return op + coord.joinToString(",")
         }
     }
-    data class KvgAnnotation(val point : Pair<Float,Float>, val text : String) {
+    data class KvgAnnotation(
+        val point : Pair<Float,Float>, val text : String
+    ) {
         override fun toString(): String {
             val(x,y) = point
             return "X$x,$y,$text"
