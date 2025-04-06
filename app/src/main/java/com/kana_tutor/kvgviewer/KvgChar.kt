@@ -31,7 +31,7 @@ class KvgChar (
     // width/height
     lateinit var dimensions : Pair<Float,Float>
         private set
-    // A Kvg character is commposed of strokes
+    // A Kvg character is composed of strokes
     // and paths.
     class KvgStrokePath(val op: String, val coord: Array<Float>) {
         override fun toString(): String {
@@ -259,13 +259,13 @@ class KvgChar (
         val annotationsSize = kvgStrokeInfo.getAnnotations().size
         if (pathsSize != annotationsSize)
             throw RuntimeException("$TAG: expected same annotation and stroke count.\n" +
-                    "Found ${pathsSize} paths vs" +
-                    " ${annotationsSize} annotations")
+                    "Found $pathsSize paths vs" +
+                    " $annotationsSize annotations")
         return arrayOf(
             "N$name",
             "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
-            "path count: " + pathsSize,
+            "path count: $pathsSize",
             ""
         ).joinToString("\n")
     }
