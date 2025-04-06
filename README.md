@@ -21,7 +21,7 @@ the app/src/main/assets/svg directory in the app code.
 The application is implemented in Kotlin.  Sometimes I get really frustrated
 with the language but personally I think it's a huge improvement over Java.
 
-Code for the custom view is found in the AnimatorView.kt file.  KanjiAnimator.kt
+Code for the custom view is found in the AnimatorView.kt file.  Animator.kt
 activity is the interface to the AnimatorView.  The code for reading the SVG
 files and converting to Android Paths is in KvgToAndroidPaths.kt.  And a really 
 simple UI will be found in MainActivity.kt.

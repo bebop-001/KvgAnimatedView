@@ -28,9 +28,9 @@ import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
 import java.io.BufferedReader
 
-private const val TAG = "KanjiAnimator"
+private const val TAG = "Animator"
 // interface to the AnimatorView.
-class KanjiAnimator : Activity() {
+class Animator : Activity() {
     companion object {
         private var showSpeedToast = true
         private var renderChar = ""
@@ -71,10 +71,10 @@ class KanjiAnimator : Activity() {
                     .putString("renderChar", renderChar)
                     .apply()
                 intent = null
-                var strokedChar: KvgStrokedChar? = null
+                var strokedChar: KvgChar? = null
                 try {
                     val reader: BufferedReader = assets.open(fName).bufferedReader()
-                    strokedChar = KvgStrokedChar(reader)
+                    strokedChar = KvgChar(reader)
                     animatorView.setStrokedChar(strokedChar)
                 }
                 catch (e:Exception) {
@@ -127,7 +127,7 @@ class KanjiAnimator : Activity() {
         // are registered, throwing away the one from the animator view
         // fixes my problem.
         if (v.id == R.id.animator_view) return
-        // Log.d("KanjiAnimator", String.format("onCreateContextMenu: id = 0x%08x", v.id))
+        // Log.d("Animator", String.format("onCreateContextMenu: id = 0x%08x", v.id))
         val inflater = menuInflater
         inflater.inflate(R.menu.kana_animator_menu, menu)
         menu.getItem(animateSpeed).isChecked = true
@@ -141,7 +141,7 @@ class KanjiAnimator : Activity() {
             R.id.animate_normal -> setAnimateSpeed(1)
             R.id.animate_fast -> setAnimateSpeed(2)
             else -> {
-                // Log.d("KanjiAnimator", String.format(
+                // Log.d("Animator", String.format(
                 //        "menu item unhandled:0x%08x", itemId))
                 rv = false
             }

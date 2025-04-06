@@ -25,7 +25,8 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import java.lang.RuntimeException
 
-import com.kana_tutor.kvgviewer.KvgStrokedChar.KvgAnnotation
+import com.kana_tutor.kvgviewer.KvgChar.KvgAnnotation
+import com.kana_tutor.kvgviewer.KvgChar.KvgCharPath
 
 // our own personal exception.
 class KvgAnimateException(message:String) : Exception (message)
@@ -60,9 +61,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // contains paths 'rendered' during the animation.
     private val renderedCharPath = Path()
 
-    private var strokeAnnotations = arrayOf<KvgAnnotation>()
+    private var renderAnnotations = arrayOf<KvgAnnotation>()
     private var ghostPath =  Path()
-    private var strokedPaths = arrayOf<Path>()
+    private var renderPaths = arrayOf<Path>()
 
     private var distance = 0f //distance moved
 
@@ -284,10 +285,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     fun setAnimateSpeed(speedIn: Int) {
         animateSteps = speed[speedIn]
     }
-    private fun KvgStrokedChar.getPaths() : Array<Path> {
+    private lateinit var kvgStrokeInfo: KvgChar.KvgStrokeInfo
+    private fun getRenderPaths(
+        strokePaths: List<KvgCharPath>
+    ) : Array<Path> {
         operator fun Array<Float>.component6() = this[5]
         val paths = mutableListOf(Path())
-        strokes.forEach { stroke ->
+        strokePaths.forEach { stroke ->
             val p = Path()
             stroke.absSegments.forEach {
                 val op = it.op; val coord = it.coord
@@ -307,7 +311,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                         p.cubicTo(x0,y0,xr,yr,x1,y1)
                         paths[0].cubicTo(x0,y0,xr,yr,x1,y1)
                     }
-                    else -> throw RuntimeException("KvgStrokedChar.getPaths: " +
+                    else -> throw RuntimeException("KvgChar.getPaths: " +
                         "Unexpected operator:$op")
                 }
             }
@@ -315,8 +319,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
         return paths.toTypedArray()
     }
-    // Apply the scale matrix to the annotation position.
-    fun setStrokedChar(strokedChar: KvgStrokedChar) {
+    // This iw where things really start.  The animator sends
+    // the stroked char which contains the Kvg stroke info.
+    fun setStrokedChar(strokedChar: KvgChar) {
+        kvgStrokeInfo = strokedChar.kvgStrokeInfo
         fun KvgAnnotation.applyScaleMatrix() : KvgAnnotation {
             val rv : KvgAnnotation
             with (point) {
@@ -335,13 +341,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             layoutWidth/ charWidth, layoutHeight/ charHeight,
             0f, 0f)
 
-        val paths = strokedChar.getPaths()
-        paths.forEach { it.transform(scaleMatrix) }
-        ghostPath = paths[0]
-        strokedPaths = paths.sliceArray(1..paths.lastIndex)
+        val renderPaths = getRenderPaths(kvgStrokeInfo.getPaths())
+        renderPaths.forEach { it.transform(scaleMatrix) }
+        ghostPath = renderPaths[0]
+        this.renderPaths = renderPaths
 
         // Apply the scale matrix to the annotation position.
-        strokeAnnotations = strokedChar.annotations
+        renderAnnotations = strokedChar.kvgAnnotations
             .map {it.applyScaleMatrix()}
             .toList().toTypedArray()
         startNewLine = true
@@ -377,13 +383,13 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
         for (i in 0 until animateSteps) {
-            if (strokePathCounter < strokedPaths.size) {
+            if (strokePathCounter <= renderPaths.lastIndex) {
                 if (startNewLine) {
                     // Log.d("draw", "stroke $strokePathCounter")
                     distance = 0f
                     pause = true
                     // measure the length of the current path.
-                    charPathMeasure.setPath(strokedPaths[strokePathCounter], false)
+                    charPathMeasure.setPath(renderPaths[strokePathCounter], false)
                     pathLength = charPathMeasure.length
                 }
                 if (distance < pathLength + animationStepDistance) {
@@ -420,15 +426,15 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
-            for(sc in 0 until strokePathCounter) {
-                val annotation = strokeAnnotations[sc]
+            val annotations = kvgStrokeInfo.getAnnotations(0..strokePathCounter)
+            for (annotation in annotations) {
                 // Paint a white background first to make text
                 // stand out, then paint the text.
                 canvas.renderText(annotation, textBgPaint)
                 canvas.renderText(annotation, textBgPaint)
                 canvas.renderText(annotation, textPaint)
             }
-            if (strokePathCounter == strokedPaths.size) {
+            if (strokePathCounter == renderPaths.size) {
                 canvas.drawCircle(pos[0], pos[1],
                     0.5f * animateStrokeWidth, dotCursorPaint)
             }

@@ -22,9 +22,8 @@ import java.io.BufferedReader
 // our own personal exception.
 class SvgConvertException(message:String) : Exception (message)
 
-private const val TAG = "KvgStrokedChar"
-// based on https://www.baeldung.com/kotlin-builder-pattern
-class KvgStrokedChar (
+private const val TAG = "KvgChar"
+class KvgChar (
     fileHandle : BufferedReader
 ) {
     private var name = ""
@@ -32,34 +31,51 @@ class KvgStrokedChar (
     // width/height
     lateinit var dimensions : Pair<Float,Float>
         private set
-    data class KvgStrokeInfo (
-        var path: KvgPath? = null,
+    // A Kvg character is commposed of strokes
+    // and paths.
+    class KvgStrokePath(val op: String, val coord: Array<Float>) {
+        override fun toString(): String {
+            return op + coord.joinToString(",")
+        }
+    }
+    data class KvgAnnotation(val point : Pair<Float,Float>, val text : String) {
+        override fun toString(): String {
+            val(x,y) = point
+            return "X$x,$y,$text"
+        }
+    }
+    data class KvgStroke (
+        var path: KvgCharPath? = null,
         var annotation: KvgAnnotation? = null
     )
+    // This class puts the strokes and annotations together.
+    // It also allows the paths which are identified by a
+    // stroke number to be accessed as an ordered
+    // zero indexed list.
     @Suppress("MemberVisibilityCanBePrivate")
-    class StrokeInfo {
-        private val info = mutableMapOf<Int, KvgStrokeInfo>()
+    class KvgStrokeInfo {
+        private val info = mutableMapOf<Int, KvgStroke>()
         val size: Int
             get() = info.size
-        private val toInfo = mutableListOf<KvgStrokeInfo>()
+        private val fromInfo = mutableListOf<KvgStroke>()
         private fun toInfoUpdate() {
-            toInfo.clear()
+            fromInfo.clear()
             for(i in info.keys.sorted()) {
-                toInfo.add(info[i]!!)
+                fromInfo.add(info[i]!!)
             }
         }
         private fun isEmpty(idx:Int) = info[idx] == null
         fun hasPath(idx:Int) : Boolean
-            = idx < toInfo.size && toInfo[idx].path != null
+            = idx < fromInfo.size && fromInfo[idx].path != null
         fun hasAnnotation(idx:Int) : Boolean
-                = idx < toInfo.size && toInfo[idx].annotation != null
+                = idx < fromInfo.size && fromInfo[idx].annotation != null
         fun putPath(
-            strokeId: Int, path: KvgPath
+            strokeId: Int, path: KvgCharPath
         ):Boolean {
             val rv = when {
                 (hasPath(strokeId)) -> false
                 (isEmpty(strokeId)) -> {
-                    info[strokeId] = KvgStrokeInfo(path = path)
+                    info[strokeId] = KvgStroke(path = path)
                     true
                 }
                 else -> {
@@ -77,7 +93,7 @@ class KvgStrokedChar (
             val rv =  when {
                 (hasAnnotation(strokeId)) -> false
                 (isEmpty(strokeId)) -> {
-                    info[strokeId] = KvgStrokeInfo(annotation = annotation)
+                    info[strokeId] = KvgStroke(annotation = annotation)
                     true
                 }
                 else -> {
@@ -89,40 +105,29 @@ class KvgStrokedChar (
                 toInfoUpdate()
             return rv
         }
-        fun getKvgStrokeInfo(idx:Int): KvgStrokeInfo? =
-            if (idx < toInfo.lastIndex) toInfo[idx]
+        fun getKvgStrokeInfo(idx:Int): KvgStroke? =
+            if (idx < fromInfo.lastIndex) fromInfo[idx]
                 else null
         fun getKvgStrokesInfo(
-            range: IntRange = 0..toInfo.size
-        ): List<KvgStrokeInfo> =
-            range.map{toInfo[it]}.toList()
+            range: IntRange = 0..fromInfo.size
+        ): List<KvgStroke> =
+            range.map{fromInfo[it]}.toList()
         fun getAnnotation(idx: Int): KvgAnnotation?
                 = getKvgStrokeInfo(idx)?.annotation
-        fun getPath(idx: Int): KvgPath?
+        fun getPath(idx: Int): KvgCharPath?
                 = getKvgStrokeInfo(idx)?.path
         fun getPaths(
-            range: IntRange = 0..toInfo.size
-        ): List<KvgPath> =
+            range: IntRange = 0..fromInfo.size
+        ): List<KvgCharPath> =
             range.mapNotNull { getPath(it) }.toList()
         fun getAnnotations(
-            range: IntRange = 0..toInfo.size
+            range: IntRange = 0..fromInfo.size
         ): List<KvgAnnotation> =
             range.mapNotNull { getAnnotation(it) }.toList()
     }
-    class KvgStrokeSegment(val op: String, val coord: Array<Float>) {
-        override fun toString(): String {
-            return op + coord.joinToString(",")
-        }
-    }
-    data class KvgAnnotation(val point : Pair<Float,Float>, val text : String) {
-        override fun toString(): String {
-            val(x,y) = point
-            return "X$x,$y,$text"
-        }
-    }
-    val annotations = mutableListOf<KvgAnnotation>()
-    class KvgPath (strokeIn : String) {
-        val absSegments = mutableListOf<KvgStrokeSegment>()
+    val kvgAnnotations = mutableListOf<KvgAnnotation>()
+    class KvgCharPath (strokeIn : String) {
+        val absSegments = mutableListOf<KvgStrokePath>()
         init {
             var absX = 0f; var absY = 0f
             fun Array<Float>.toAbs() : Array<Float> {
@@ -141,7 +146,7 @@ class KvgStrokedChar (
                     "L", "M" -> {
                         absX = coord[0]; absY = coord[1]
                         absSegments.add(
-                            KvgStrokeSegment(
+                            KvgStrokePath(
                             op, coord)
                         )
                     }
@@ -168,7 +173,7 @@ class KvgStrokedChar (
                             yReflection = (2*y2) - y1
                             absX =  coord[coord.lastIndex - 1]; absY = coord[coord.lastIndex]
                             absSegments.add(
-                                KvgStrokeSegment(
+                                KvgStrokePath(
                                 op, c)
                             )
                         } while (cc.isNotEmpty())
@@ -189,7 +194,7 @@ class KvgStrokedChar (
                 .toList()
             if (segments.isEmpty()) {
                 throw SvgConvertException(
-                    "KvgPath: no segments found in \"$segments\"")
+                    "KvgCharPath: no segments found in \"$segments\"")
             }
             for (seg in segments) {
                 val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+.,-]+)".toRegex()
@@ -200,14 +205,14 @@ class KvgStrokedChar (
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
                 saveToAbsSeg(op, coord)
-                // println("nextLine" + "KvgPath:Segments:${segments.map { it }}")
+                // println("nextLine" + "KvgCharPath:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
             return absSegments.joinToString("")
         }
     }
-    val strokeInfo = StrokeInfo()
+    val kvgStrokeInfo = KvgStrokeInfo()
 
     init {
         var line = ""
@@ -221,7 +226,6 @@ class KvgStrokedChar (
         val opNoIdRegex = """(.)(.*)""".toRegex()
         val argToPathRegex ="""(^\d+)(.*)""".toRegex()
         val commasSplitRegex = """\s*,\s*""".toRegex()
-
         while (fileHandle.nextLine()) {
             if (line.isNotEmpty()){
                 val (op, arg) = opNoIdRegex.find(line)!!.destructured
@@ -237,11 +241,11 @@ class KvgStrokedChar (
                     }
                     "S" -> {
                         val (id, path) = argToPathRegex.find(arg)!!.destructured
-                        strokeInfo.putPath(id.toInt(), KvgPath(path))
+                        kvgStrokeInfo.putPath(id.toInt(), KvgCharPath(path))
                     }
                     "X" -> {// text
                         val (id, posX, posY, text) = arg.split(commasSplitRegex)
-                        strokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
+                        kvgStrokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
                             Pair(posX.toFloat(), posY.toFloat()), text
                         ))
                     }
@@ -250,8 +254,8 @@ class KvgStrokedChar (
         }
     }
     override fun toString() : String {
-        val pathsSize = strokeInfo.getPaths().size
-        val annotationsSize = strokeInfo.getAnnotations().size
+        val pathsSize = kvgStrokeInfo.getPaths().size
+        val annotationsSize = kvgStrokeInfo.getAnnotations().size
         if (pathsSize != annotationsSize)
             throw RuntimeException("$TAG: expected same annotation and stroke count.\n" +
                     "Found ${pathsSize} paths vs" +
