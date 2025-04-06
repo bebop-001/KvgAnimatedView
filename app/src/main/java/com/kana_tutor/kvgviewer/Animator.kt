@@ -54,6 +54,8 @@ class Animator : Activity() {
         animatorView.setOnClickListener {
             // re-draw the animation.
             animatorView.strokePathCounter = 0
+            // Clear any previously rendered paths.
+            animatorView.renderedCharPath.reset()
             animatorView.invalidate()
         }
         // If user touches screen outside of the animate view, exit.
