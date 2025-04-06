@@ -108,7 +108,7 @@ class KvgChar (
             return rv
         }
         fun getKvgStrokeInfo(idx:Int): KvgStroke? =
-            if (idx < fromInfo.lastIndex) fromInfo[idx]
+            if (idx <= fromInfo.lastIndex) fromInfo[idx]
                 else null
         fun getKvgStrokesInfo(
             range: IntRange = 0..fromInfo.size
