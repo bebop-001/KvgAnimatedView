@@ -57,7 +57,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // used to scale char to view size.
     private lateinit var scaleMatrix: Matrix
 
-    private val charPathMeasure = PathMeasure()
+    private val pathMeasure = PathMeasure()
 
     // contains paths 'rendered' during the animation.
     val renderedCharPath = Path()
@@ -66,7 +66,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private var ghostPath =  Path()
     private var renderPaths = arrayOf<Path>()
 
-    private var distance = 0f //distance moved
+    private var strokedDistance = 0f //distance moved
 
     private var pathLength = 0f // total length of the path.
 
@@ -332,8 +332,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 val src = floatArrayOf(first, second)
                 scaleMatrix.mapPoints(src)
                 rv = KvgAnnotation(Pair(src[0], src[1]), text)
-                Log.d(TAG,"applyScaleMatrix:" +
-                        "$point -> $rv" )
             }
             return rv
         }
@@ -378,8 +376,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // because my oldest device (android 4.4) could handle it.
     private val renderRate = 75
     //distance each animationStepDistance
-    private val animationStepDistance = 3f.dpToPx()
+    private val animateStepDistance = 3f.dpToPx()
     var resetPaths = false
+    var x = 0
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         var pause = false
@@ -394,47 +393,56 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             if (strokePathCounter <= renderPaths.lastIndex) {
                 if (startNewLine) {
                     // Log.d("draw", "stroke $strokePathCounter")
-                    distance = 0f
+                    strokedDistance = 0f
                     pause = true
-                    // measure the length of the current path.
-                    charPathMeasure.setPath(renderPaths[strokePathCounter], false)
-                    pathLength = charPathMeasure.length
-                }
-                if (distance < pathLength + animationStepDistance) {
-                    // render the end point.
-                    if (distance > pathLength)
-                        distance = pathLength
+                    // set the path and measure it's lengyh.
+                    pathMeasure.setPath(
+                        renderPaths[strokePathCounter],
+                        false)
+                    pathLength = pathMeasure.length
+                    Log.d(TAG, "sc 0:${x++}:$strokePathCounter:" +
+                            "${pos[0]}:${pos[1]}")
+                 }
+                if (strokedDistance < pathLength + animateStepDistance) {
+                    // prune the end point if necessary.
+                    if (strokedDistance > pathLength)
+                        strokedDistance = pathLength
                     // getPosTan pins the distance along the Path and
                     // computes the position and the tangent.  This sets
                     // the position for the move-to segment.
-                    charPathMeasure.getPosTan(distance, pos, null)
-                    distance += animationStepDistance
+                    pathMeasure.getPosTan(strokedDistance, pos, null)
+                    strokedDistance += animateStepDistance
                     if (startNewLine) {
+                        Log.d(TAG, "sc 1:${x++}:$strokePathCounter:" +
+                                "${pos[0]}:${pos[1]}")
                         startNewLine = false
                         if (resetPaths) {
                             resetPaths = false
+                            strokedDistance = 0F
                             renderedCharPath.reset()
                         }
+                        // move to start of new line.
                         renderedCharPath.moveTo(pos[0], pos[1])
                     }
                     else {
+                        // This draws our path.
                         renderedCharPath.lineTo(pos[0], pos[1])
-                        canvas.drawCircle(pos[0], pos[1],
-                            0.5f * animateStrokeWidth, blurredCursorPaint)
-                        // Catch end points as we go.
                     }
                 }
                 else {
                     // next stroke...
                     strokePathCounter += 1
                     startNewLine = true
+                    Log.d(TAG, "sc 2:${x++}:$strokePathCounter:" +
+                            "${pos[0]}:${pos[1]}")
                 }
                 // Animation happens here -- invalidate restarts render if necessary.
                 // Using a calculated period measured from the start of the
                 // render gives a steady refresh rate.
-                var sleepTime = renderRate - System.currentTimeMillis() + startTime
+                var sleepTime =
+                    renderRate - System.currentTimeMillis() + startTime
                 if (pause)
-                    sleepTime += 300
+                    sleepTime += 500
                 postInvalidateDelayed(sleepTime)
             }
             canvas.drawPath(renderedCharPath, renderedCharPaint)
@@ -449,6 +457,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     canvas.renderText(annotation, textPaint)
                 }
             }
+            // draw a bluured cursor when stroking and a dot
+            // to mark the end of thr last stroke.
             if (strokePathCounter == renderPaths.size) {
                 canvas.drawCircle(pos[0], pos[1],
                     0.5f * animateStrokeWidth, dotCursorPaint)
@@ -457,7 +467,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 canvas.drawCircle(pos[0], pos[1],
                     0.5f * animateStrokeWidth, blurredCursorPaint)
             }
-            // Log.d("draw", "${pos[0]},${pos[1]}")
         }
     }
 }
