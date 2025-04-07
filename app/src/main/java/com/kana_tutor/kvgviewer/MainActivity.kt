@@ -42,12 +42,11 @@ class MainActivity : AppCompatActivity() {
         )
         val animateButton = findViewById<Button>(R.id.animate_char_button)
         animateButton.setOnClickListener { animationOnClick() }
+        // for debugging...
+        startAnimator("一")
     }
 
-    private fun animationOnClick() {
-        val tv = findViewById<TextView>(R.id.renderChar_TXT)
-
-        val renderChar = tv.text.toString().trim()
+    private fun startAnimator(renderChar: String) {
         val renderFile = pathFiles.firstOrNull() {
             it.contains(renderChar)
         }
@@ -58,11 +57,16 @@ class MainActivity : AppCompatActivity() {
             startActivity(startAnimator)
         }
         else {
-            Toast.makeText(this,
-                if(renderChar.isEmpty()) "skipping empty input"
+            Toast.makeText(
+                this,
+                if (renderChar.isEmpty()) "skipping empty input"
                 else "Can't render \"$renderChar\". Char not found.",
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+    private fun animationOnClick() {
+        val tv = findViewById<TextView>(R.id.renderChar_TXT)
+        startAnimator(tv.text.toString().trim())
     }
 }
