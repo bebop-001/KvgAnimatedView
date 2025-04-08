@@ -20,7 +20,6 @@ package com.kana_tutor.kvgviewer
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import java.lang.RuntimeException
@@ -278,6 +277,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
     // speed of animation is determined by number of steps.
     // More steps per frame == faster animation.
+
     private val speed = intArrayOf(3, 6, 9)
     private var animateSteps = 0
     fun setAnimateSpeed(speedIn: Int) {
@@ -365,6 +365,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         drawLine(w, top, w, bottom, gridPaint)
         drawLine(2 * w, top, 2 * w, bottom, gridPaint)
     }
+    private fun Canvas.renderGhostImage() =
+        ghostPath.map {p -> drawPath(p, ghostCharPaint) }
+
     private fun Canvas.renderText(idx: Int) {
         if (idx <= renderAnnotations.lastIndex) {
             val annotation = renderAnnotations[idx]
@@ -385,55 +388,59 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // because my oldest device (android 4.4) could handle it.
     private val renderRate = 75
     //distance each animationStepDistance
-    private val animateStepDistance = 3f.dpToPx()
+    private val animateStepDistance = 15f.dpToPx()
     var resetPaths = false
     var x = 0
-    var beenHere = 0
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
+
         canvas.drawPaint(bgPaint)
-        // draw the ghost char and grid.
-        for (p in ghostPath) canvas.drawPath(p, ghostCharPaint)
+        canvas.renderGhostImage()
         canvas.renderGrid()
-        // "faster" render speed means more animateSteps
-        // which means the segment drawn will be longer.
-        for (i in 0 until animateSteps) {
+
+        for (animateStep in 0 until animateSteps) {
             if (strokePathCounter <= renderPaths.lastIndex) {
                 if (startNewLine) {
-                    if (resetPaths) {
-                        resetPaths = false
-                        renderedPath.reset()
-                        strokePathCounter = 0
-                    }
+                    // either this is the first line or the
+                    // line we just drew reached it's end.
                     startNewLine = false
                     strokedDistance = 0f
                     pause = true
-                    // set the path and measure it's lengyh.
+                    // if a reset occurred, deal with it when
+                    // starting a new line.
+                    if (resetPaths) {
+                        resetPaths = false
+                        // Clear any previously rendered paths.
+                        renderedPath.reset()
+                        strokePathCounter = 0
+                    }
+                    // set the new path and measure it's length.
                     pathMeasure.setPath(
                         renderPaths[strokePathCounter],
                         false)
                     pathMeasure.getPosTan(strokedDistance, pos, null)
-                    pathLength = pathMeasure.length // overall length od this path...
+                    // save the overall length od this path...
+                    pathLength = pathMeasure.length
                     // move to start of new line.
                     renderedPath.moveTo(pos[0], pos[1])
-                    beenHere = 0
                 }
-                if (strokedDistance < pathLength + animateStepDistance) {
+                if (strokedDistance < pathLength) {
+                    strokedDistance += animateStepDistance
+                    // Print the current stroke number.
                     canvas.renderText(strokePathCounter)
-                    // prune the end point if necessary.
                     if (strokedDistance >= pathLength) {
+                        // prune the line to its max length
                         strokedDistance = pathLength
-                        strokePathCounter += 1
                         // next stroke...
+                        strokePathCounter += 1
                         startNewLine = true
                     }
                     // getPosTan pins the distance along the Path and
                     // computes the position and the tangent.  This sets
                     // the position for the move-to segment.
                     pathMeasure.getPosTan(strokedDistance, pos, null)
-                    strokedDistance += animateStepDistance
                     // This draws our path.
                     renderedPath.lineTo(pos[0], pos[1])
                 }
@@ -446,10 +453,9 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     sleepTime += 500
                 postInvalidateDelayed(sleepTime)
             }
-            beenHere++
             canvas.drawPath(renderedPath, renderedCharPaint)
             canvas.renderText(0..strokePathCounter)
-            // draw a bluured cursor when stroking and a dot
+            // draw a blurred cursor when stroking and a dot
             // to mark the end of thr last stroke.
             if (strokePathCounter == renderPaths.size) {
                 canvas.drawCircle(pos[0], pos[1],
