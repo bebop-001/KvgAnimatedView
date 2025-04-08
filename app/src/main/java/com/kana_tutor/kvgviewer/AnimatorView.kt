@@ -63,7 +63,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     val renderedCharPath = Path()
 
     private var renderAnnotations = arrayOf<KvgAnnotation>()
-    private var ghostPath =  Path()
+    private var ghostPath =  arrayOf<Path>()
     private var renderPaths = arrayOf<Path>()
 
     private var strokedDistance = 0f //distance moved
@@ -291,7 +291,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         strokePaths: List<KvgCharPath>
     ) : Array<Path> {
         operator fun Array<Float>.component6() = this[5]
-        val paths = mutableListOf(Path())
+        val paths = mutableListOf<Path>()
         strokePaths.forEach { stroke ->
             val p = Path()
             stroke.absSegments.forEach {
@@ -299,18 +299,15 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 when (op) {
                     "M" -> {
                         val (x,y) = coord
-                        paths[0].moveTo(x,y)
                         p.moveTo(x,y)
                     }
                     "L" -> {
                         val (x,y) = coord
-                        paths[0].lineTo(x,y)
                         p.lineTo(x,y)
                     }
                     "C" -> {
                         val (x0,y0,xr,yr,x1,y1) = coord
                         p.cubicTo(x0,y0,xr,yr,x1,y1)
-                        paths[0].cubicTo(x0,y0,xr,yr,x1,y1)
                     }
                     else -> throw RuntimeException("KvgChar.getPaths: " +
                         "Unexpected operator:$op")
@@ -346,7 +343,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
         val renderPaths = getRenderPaths(kvgStrokeInfo.getPaths())
         renderPaths.forEach { it.transform(scaleMatrix) }
-        ghostPath = renderPaths[0]
+        ghostPath = renderPaths
         this.renderPaths = renderPaths
 
         // Apply the scale matrix to the annotation position.
@@ -379,62 +376,58 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val animateStepDistance = 3f.dpToPx()
     var resetPaths = false
     var x = 0
+    var beenHere = 0
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         var pause = false
         startTime = System.currentTimeMillis()
         canvas.drawPaint(bgPaint)
         // draw the ghost char and grid.
-        canvas.drawPath(ghostPath, ghostCharPaint)
+        for (p in ghostPath) canvas.drawPath(p, ghostCharPaint)
         canvas.renderGrid()
         // "faster" render speed means more animateSteps
         // which means the segment drawn will be longer.
         for (i in 0 until animateSteps) {
             if (strokePathCounter <= renderPaths.lastIndex) {
                 if (startNewLine) {
-                    // Log.d("draw", "stroke $strokePathCounter")
+                    if (resetPaths) {
+                        resetPaths = false
+                        renderedCharPath.reset()
+                        strokePathCounter = 0
+                        Log.d(TAG, "sc reset" )
+                    }
+                    startNewLine = false
                     strokedDistance = 0f
                     pause = true
                     // set the path and measure it's lengyh.
                     pathMeasure.setPath(
                         renderPaths[strokePathCounter],
                         false)
-                    pathLength = pathMeasure.length
-                    Log.d(TAG, "sc 0:${x++}:$strokePathCounter:" +
+                    pathMeasure.getPosTan(strokedDistance, pos, null)
+                    pathLength = pathMeasure.length // overall length od this path...
+                    // move to start of new line.
+                    renderedCharPath.moveTo(pos[0], pos[1])
+                    beenHere = 0
+                    Log.d(TAG, "sc start + move to:$strokePathCounter:" +
                             "${pos[0]}:${pos[1]}")
-                 }
+                }
                 if (strokedDistance < pathLength + animateStepDistance) {
                     // prune the end point if necessary.
-                    if (strokedDistance > pathLength)
+                    if (strokedDistance >= pathLength) {
                         strokedDistance = pathLength
+                        strokePathCounter += 1
+                        // next stroke...
+                        startNewLine = true
+                        Log.d(TAG, "sc 2:$strokePathCounter:" +
+                                "${pos[0]}:${pos[1]}: been here: ${beenHere++}")
+                    }
                     // getPosTan pins the distance along the Path and
                     // computes the position and the tangent.  This sets
                     // the position for the move-to segment.
                     pathMeasure.getPosTan(strokedDistance, pos, null)
                     strokedDistance += animateStepDistance
-                    if (startNewLine) {
-                        Log.d(TAG, "sc 1:${x++}:$strokePathCounter:" +
-                                "${pos[0]}:${pos[1]}")
-                        startNewLine = false
-                        if (resetPaths) {
-                            resetPaths = false
-                            strokedDistance = 0F
-                            renderedCharPath.reset()
-                        }
-                        // move to start of new line.
-                        renderedCharPath.moveTo(pos[0], pos[1])
-                    }
-                    else {
-                        // This draws our path.
-                        renderedCharPath.lineTo(pos[0], pos[1])
-                    }
-                }
-                else {
-                    // next stroke...
-                    strokePathCounter += 1
-                    startNewLine = true
-                    Log.d(TAG, "sc 2:${x++}:$strokePathCounter:" +
-                            "${pos[0]}:${pos[1]}")
+                    // This draws our path.
+                    renderedCharPath.lineTo(pos[0], pos[1])
                 }
                 // Animation happens here -- invalidate restarts render if necessary.
                 // Using a calculated period measured from the start of the
@@ -445,6 +438,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     sleepTime += 500
                 postInvalidateDelayed(sleepTime)
             }
+            beenHere++
             canvas.drawPath(renderedCharPath, renderedCharPaint)
             // annotate all previously drawn lines.
             for (sc in 0 until strokePathCounter) {
