@@ -42,8 +42,6 @@ class MainActivity : AppCompatActivity() {
         )
         val animateButton = findViewById<Button>(R.id.animate_char_button)
         animateButton.setOnClickListener { animationOnClick() }
-        // for debugging...
-        startAnimator("一")
     }
 
     private fun startAnimator(renderChar: String) {

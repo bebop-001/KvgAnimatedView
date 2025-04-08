@@ -55,6 +55,7 @@ class Animator : Activity() {
             // Restart the animation.
             animatorView.resetPaths = true
             animatorView.resetPaths
+            animatorView.strokePathCounter = 0
             animatorView.invalidate()
         }
         // If user touches screen outside of the animate view, exit.
