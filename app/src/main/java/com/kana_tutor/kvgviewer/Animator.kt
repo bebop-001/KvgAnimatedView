@@ -52,10 +52,9 @@ class Animator : Activity() {
         animatorView = findViewById(R.id.animator_view)
         animatorView.setAnimateSpeed(animateSpeed)
         animatorView.setOnClickListener {
-            // re-draw the animation.
-            // Reset
+            // Restart the animation.
             animatorView.resetPaths = true
-            animatorView.strokePathCounter = 0
+            animatorView.resetPaths
             animatorView.invalidate()
         }
         // If user touches screen outside of the animate view, exit.
@@ -86,8 +85,6 @@ class Animator : Activity() {
                     Toast.makeText(this,mess, Toast.LENGTH_LONG).show()
                     Log.d(TAG, mess)
                 }
-
-                Log.d(TAG, "strokedChar: $strokedChar")
             }
         }
         // register for the speed-set context menu.

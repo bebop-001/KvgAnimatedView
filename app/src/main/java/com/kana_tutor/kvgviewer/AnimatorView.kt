@@ -60,7 +60,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val pathMeasure = PathMeasure()
 
     // contains paths 'rendered' during the animation.
-    val renderedCharPath = Path()
+    private val renderedPath = Path()
 
     private var renderAnnotations = arrayOf<KvgAnnotation>()
     private var ghostPath =  arrayOf<Path>()
@@ -200,9 +200,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
         gridColor = attrs.getAttributeValue(appNameSpace, "grid_color")
             .attrToColor(android.R.color.holo_blue_dark)
-
-        Log.d("onSizeChanged", "layoutWidth:$layoutWidth, layoutHeight:$layoutHeight")
-
         // Various paint objects used during render.
         // the character is rendered with this brush.
         renderedCharPaint = Paint()
@@ -354,7 +351,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             .toList().toTypedArray()
         startNewLine = true
         strokePathCounter = 0
-        renderedCharPath.reset()
+        renderedPath.reset()
     }
 
     private fun Canvas.renderGrid() {
@@ -368,7 +365,22 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         drawLine(w, top, w, bottom, gridPaint)
         drawLine(2 * w, top, 2 * w, bottom, gridPaint)
     }
-
+    private fun Canvas.renderText(idx: Int) {
+        if (idx <= renderAnnotations.lastIndex) {
+            val annotation = renderAnnotations[idx]
+            // Paint a white background first to make text
+            // stand out, then paint the text.
+            renderText(annotation, textBgPaint)
+            renderText(annotation, textBgPaint)
+            renderText(annotation, textPaint)
+        }
+    }
+    private fun Canvas.renderText(intRange: IntRange) {
+        for(i in intRange) {
+            if (i <= renderAnnotations.lastIndex)
+                renderText(i)
+        }
+    }
     // render rate milliseconds. sets our frame rate.  This rate was chosen
     // because my oldest device (android 4.4) could handle it.
     private val renderRate = 75
@@ -392,9 +404,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 if (startNewLine) {
                     if (resetPaths) {
                         resetPaths = false
-                        renderedCharPath.reset()
+                        renderedPath.reset()
                         strokePathCounter = 0
-                        Log.d(TAG, "sc reset" )
                     }
                     startNewLine = false
                     strokedDistance = 0f
@@ -406,20 +417,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     pathMeasure.getPosTan(strokedDistance, pos, null)
                     pathLength = pathMeasure.length // overall length od this path...
                     // move to start of new line.
-                    renderedCharPath.moveTo(pos[0], pos[1])
+                    renderedPath.moveTo(pos[0], pos[1])
                     beenHere = 0
-                    Log.d(TAG, "sc start + move to:$strokePathCounter:" +
-                            "${pos[0]}:${pos[1]}")
                 }
                 if (strokedDistance < pathLength + animateStepDistance) {
+                    canvas.renderText(strokePathCounter)
                     // prune the end point if necessary.
                     if (strokedDistance >= pathLength) {
                         strokedDistance = pathLength
                         strokePathCounter += 1
                         // next stroke...
                         startNewLine = true
-                        Log.d(TAG, "sc 2:$strokePathCounter:" +
-                                "${pos[0]}:${pos[1]}: been here: ${beenHere++}")
                     }
                     // getPosTan pins the distance along the Path and
                     // computes the position and the tangent.  This sets
@@ -427,7 +435,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                     pathMeasure.getPosTan(strokedDistance, pos, null)
                     strokedDistance += animateStepDistance
                     // This draws our path.
-                    renderedCharPath.lineTo(pos[0], pos[1])
+                    renderedPath.lineTo(pos[0], pos[1])
                 }
                 // Animation happens here -- invalidate restarts render if necessary.
                 // Using a calculated period measured from the start of the
@@ -439,18 +447,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 postInvalidateDelayed(sleepTime)
             }
             beenHere++
-            canvas.drawPath(renderedCharPath, renderedCharPaint)
-            // annotate all previously drawn lines.
-            for (sc in 0 until strokePathCounter) {
-                if (sc <= renderAnnotations.lastIndex) {
-                    val annotation = renderAnnotations[sc]
-                    // Paint a white background first to make text
-                    // stand out, then paint the text.
-                    canvas.renderText(annotation, textBgPaint)
-                    canvas.renderText(annotation, textBgPaint)
-                    canvas.renderText(annotation, textPaint)
-                }
-            }
+            canvas.drawPath(renderedPath, renderedCharPaint)
+            canvas.renderText(0..strokePathCounter)
             // draw a bluured cursor when stroking and a dot
             // to mark the end of thr last stroke.
             if (strokePathCounter == renderPaths.size) {
