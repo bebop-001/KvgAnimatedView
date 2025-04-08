@@ -73,7 +73,7 @@ class Animator : Activity() {
                     .putString("renderChar", renderChar)
                     .apply()
                 intent = null
-                var strokedChar: KvgChar? = null
+                val strokedChar: KvgChar?
                 try {
                     val reader: BufferedReader = assets.open(
                         fName
