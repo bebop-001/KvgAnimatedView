@@ -18,14 +18,20 @@
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.BlurMaskFilter
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PathMeasure
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.util.TypedValue.COMPLEX_UNIT_DIP
 import android.view.View
 import androidx.core.content.ContextCompat
-import java.lang.RuntimeException
-
 import com.kana_tutor.kvgviewer.KvgChar.KvgAnnotation
 import com.kana_tutor.kvgviewer.KvgChar.KvgCharPath
 
@@ -90,12 +96,38 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val gridPaint : Paint           // the grid
     private val bgPaint : Paint             // the background.
 
-    // convert pix/font point for display independence
+    /*
+     * Display metrics for Samsung J7 screen resolution = 1280 x 720
+     *      DisplayMetrics:     HD Display
+     *          density         1.75
+     *          densityDpi      280
+     *          width           720     1,9"
+     *          height          1356    5,5"
+     *             1356 / 5.5 = 246.5 pix/in
+     *          scaledDensity   1.9250001
+     *          xdpi            294.967
+     *          ydpi            294.967}
+     */
+    private var displayDensity = resources.displayMetrics.density
+    /*
+     * The logical density of the display.  This is a scaling factor for the
+     * Density Independent Pixel unit, where one DIP is one pixel on an
+     * approximately 160 dpi screen (for example a 240x320, 1.5"x2" screen), 
+     * providing the baseline of the system's display. Thus on a 160dpi screen 
+     * this density value will be 1; on a 120 dpi screen it would be .75; etc.
+     *  
+     * <p>This value does not exactly follow the real screen size (as given by 
+     * {@link #xdpi} and {@link #ydpi}), but rather is used to scale the size of
+     * the overall UI in steps based on gross changes in the display dpi.  For 
+     * example, a 240x320 screen will have a density of 1 even if its width is 
+     * 1.8", 1.3", etc. However, if the screen resolution is increased to 
+     * 320x480 but the screen size remained 1.5"x2" then the density would be 
+     * increased (probably to 1.5).
+     */
     private fun Float.pxToDp(): Float {
-        var dp = this / resources.displayMetrics.density
+        val dp = this / displayDensity
         // dp = 1 pixel if its zero to prevent divide by 0 error.
-        if (dp < 1) dp = 1f
-        return dp
+        return if (dp < 1) 1f else dp
     }
     private fun Int.pxToDp() : Float = this.toFloat().pxToDp()
     private fun Float.dpToPx(): Float {
@@ -281,12 +313,14 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // Shorter steps means more steps per frame means slower animation.
     private val dpi_1 = TypedValue.applyDimension(
         COMPLEX_UNIT_DIP, 1F, resources.displayMetrics)
+    // dpi...FAS
     private val stepDistance = mapOf(
         ANIMATE_SLOW to 4 * dpi_1,
         ANIMATE_NORMAL to 10 * dpi_1,
         ANIMATE_FAST to 17 * dpi_1)
     // length of each animation step in DPI.
     private var animateStepDistance = stepDistance[ANIMATE_NORMAL]!!
+    // rv is pix / step.
     fun setAnimateStepDistance(speedSelector: Int) {
         animateStepDistance = stepDistance[speedSelector]!!
     }
@@ -325,7 +359,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     }
     // This iw where things really start.  The animator sends
     // the stroked char which contains the Kvg stroke info
-    // in the form of an avg file.  An avg file hplds the
+    // in the form of an avg file.  An avg file holds the
     // stroke, annotation, width and height extracted from
     // KvgKanji .svg file.
     fun setStrokedChar(strokedChar: KvgChar) {
@@ -470,6 +504,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // draw a blurred cursor when stroking and a dot
         // to mark the end of thr last stroke.
         if (strokePathCounter == renderPaths.size) {
+            @Suppress("UnusedImport")
             canvas.drawCircle(pos[0], pos[1],
                 0.5f * animateStrokeWidth, dotCursorPaint)
         }
