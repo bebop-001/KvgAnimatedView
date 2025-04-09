@@ -23,6 +23,7 @@ import java.io.BufferedReader
 class SvgConvertException(message:String) : Exception (message)
 
 private const val TAG = "KvgChar"
+@Suppress("unused")
 class KvgChar (
     fileHandle : BufferedReader
 ) {
