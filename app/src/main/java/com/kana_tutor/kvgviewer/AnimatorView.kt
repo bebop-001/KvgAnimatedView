@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("UnnecessaryVariable", "unused")
+@file:Suppress("UnnecessaryVariable", "unused", "PrivatePropertyName")
 
 package com.kana_tutor.kvgviewer
 
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.TypedValue
+import android.util.TypedValue.COMPLEX_UNIT_DIP
 import android.view.View
 import androidx.core.content.ContextCompat
 import java.lang.RuntimeException
@@ -277,11 +279,17 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
 
     // speed of animation is determined by number of steps.
     // More steps per frame == faster animation.
-
-    private val speed = intArrayOf(3, 6, 9)
+    //distance each animationStepDistance
+    private val dpi_1 = TypedValue.applyDimension(
+        COMPLEX_UNIT_DIP, 1F, resources.displayMetrics)
+    private val stepDistance = mapOf(
+        ANIMATE_SLOW to 4 * dpi_1,
+        ANIMATE_NORMAL to 10 * dpi_1,
+        ANIMATE_FAST to 17 * dpi_1)
+    private var animateStepDistance = stepDistance[ANIMATE_NORMAL]!!
     private var animateSteps = 0
-    fun setAnimateSpeed(speedIn: Int) {
-        animateSteps = speed[speedIn]
+    fun setAnimateStepDistance(speedSelector: Int) {
+        animateStepDistance = stepDistance[speedSelector]!!
     }
     private lateinit var kvgStrokeInfo: KvgChar.KvgStrokeInfo
     private fun getRenderPaths(
@@ -387,8 +395,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // render rate milliseconds. sets our frame rate.  This rate was chosen
     // because my oldest device (android 4.4) could handle it.
     private val renderRate = 75
-    //distance each animationStepDistance
-    private val animateStepDistance = 15f.dpToPx()
     var resetPaths = false
     var x = 0
     override fun onDraw(canvas: Canvas) {
@@ -400,71 +406,72 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         canvas.renderGhostImage()
         canvas.renderGrid()
 
-        for (animateStep in 0 until animateSteps) {
-            if (strokePathCounter <= renderPaths.lastIndex) {
-                if (startNewLine) {
-                    // either this is the first line or the
-                    // line we just drew reached it's end.
-                    startNewLine = false
-                    strokedDistance = 0f
-                    pause = true
-                    // if a reset occurred, deal with it when
-                    // starting a new line.
-                    if (resetPaths) {
-                        resetPaths = false
-                        // Clear any previously rendered paths.
-                        renderedPath.reset()
-                        strokePathCounter = 0
-                    }
-                    // set the new path and measure it's length.
-                    pathMeasure.setPath(
-                        renderPaths[strokePathCounter],
-                        false)
-                    pathMeasure.getPosTan(strokedDistance, pos, null)
-                    // save the overall length od this path...
-                    pathLength = pathMeasure.length
-                    // move to start of new line.
-                    renderedPath.moveTo(pos[0], pos[1])
+        if (strokePathCounter <= renderPaths.lastIndex) {
+            if (startNewLine) {
+                // either this is the first line or the
+                // line we just drew reached it's end.
+                startNewLine = false
+                strokedDistance = 0f
+                pause = true
+                // if a reset occurred, deal with it when
+                // starting a new line.
+                if (resetPaths) {
+                    resetPaths = false
+                    // Clear any previously rendered paths.
+                    renderedPath.reset()
+                    strokePathCounter = 0
                 }
-                if (strokedDistance < pathLength) {
-                    strokedDistance += animateStepDistance
-                    // Print the current stroke number.
-                    canvas.renderText(strokePathCounter)
-                    if (strokedDistance >= pathLength) {
-                        // prune the line to its max length
-                        strokedDistance = pathLength
-                        // next stroke...
-                        strokePathCounter += 1
-                        startNewLine = true
-                    }
-                    // getPosTan pins the distance along the Path and
-                    // computes the position and the tangent.  This sets
-                    // the position for the move-to segment.
-                    pathMeasure.getPosTan(strokedDistance, pos, null)
-                    // This draws our path.
-                    renderedPath.lineTo(pos[0], pos[1])
+                // set the new path and measure it's length.
+                pathMeasure.setPath(
+                    renderPaths[strokePathCounter],
+                    false)
+                pathMeasure.getPosTan(strokedDistance, pos, null)
+                // save the overall length od this path...
+                pathLength = pathMeasure.length
+                // move to start of new line.
+                renderedPath.moveTo(pos[0], pos[1])
+            }
+            if (strokedDistance < pathLength) {
+                strokedDistance += animateStepDistance
+                // Print the current stroke number.
+                canvas.renderText(strokePathCounter)
+                if (strokedDistance >= pathLength) {
+                    // prune the line to its max length
+                    strokedDistance = pathLength
+                    // next stroke...
+                    strokePathCounter += 1
+                    startNewLine = true
                 }
-                // Animation happens here -- invalidate restarts render if necessary.
-                // Using a calculated period measured from the start of the
-                // render gives a steady refresh rate.
-                var sleepTime =
-                    renderRate - System.currentTimeMillis() + startTime
-                if (pause)
-                    sleepTime += 500
-                postInvalidateDelayed(sleepTime)
-            }
-            canvas.drawPath(renderedPath, renderedCharPaint)
-            canvas.renderText(0..strokePathCounter)
-            // draw a blurred cursor when stroking and a dot
-            // to mark the end of thr last stroke.
-            if (strokePathCounter == renderPaths.size) {
+                // getPosTan pins the distance along the Path and
+                // computes the position and the tangent.  This sets
+                // the position for the move-to segment.
                 canvas.drawCircle(pos[0], pos[1],
-                    0.5f * animateStrokeWidth, dotCursorPaint)
+                    0.8f * animateStrokeWidth, blurredCursorPaint)
+
+                pathMeasure.getPosTan(strokedDistance, pos, null)
+                // This draws our path.
+                renderedPath.lineTo(pos[0], pos[1])
             }
-            else {
-                canvas.drawCircle(pos[0], pos[1],
-                    0.5f * animateStrokeWidth, blurredCursorPaint)
-            }
+            // Animation happens here -- invalidate restarts render if necessary.
+            // Using a calculated period measured from the start of the
+            // render gives a steady refresh rate.
+            var sleepTime =
+                renderRate - System.currentTimeMillis() + startTime
+            if (pause)
+                sleepTime += 500
+            postInvalidateDelayed(sleepTime)
+        }
+        canvas.drawPath(renderedPath, renderedCharPaint)
+        canvas.renderText(0..strokePathCounter)
+        // draw a blurred cursor when stroking and a dot
+        // to mark the end of thr last stroke.
+        if (strokePathCounter == renderPaths.size) {
+            canvas.drawCircle(pos[0], pos[1],
+                0.5f * animateStrokeWidth, dotCursorPaint)
+        }
+        else {
+            canvas.drawCircle(pos[0], pos[1],
+                0.8f * animateStrokeWidth, blurredCursorPaint)
         }
     }
 }

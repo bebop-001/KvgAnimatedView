@@ -29,6 +29,11 @@ import android.widget.Toast.LENGTH_SHORT
 import java.io.BufferedReader
 
 private const val TAG = "Animator"
+
+const val ANIMATE_SLOW = 0
+const val ANIMATE_NORMAL = 1
+const val ANIMATE_FAST = 2
+
 // interface to the AnimatorView.
 class Animator : Activity() {
     companion object {
@@ -36,27 +41,28 @@ class Animator : Activity() {
         private var renderChar = ""
     }
 
-    private var animateSpeed = 0
+    private var animateSpeed = ANIMATE_NORMAL
     private lateinit var prefs: SharedPreferences
     private lateinit var animatorView : AnimatorView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.animator_view)
         prefs = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE)
-        animateSpeed = prefs.getInt("animateSpeed", 1)
+        animateSpeed = prefs.getInt("animateSpeed", ANIMATE_NORMAL)
         if (prefs.getString("renderChar", null) != null)
             renderChar = prefs.getString("renderChar", null)!!
 
         // cause display properties to init.
         // DisplayProperties(this, R.id.animate_layout)
         animatorView = findViewById(R.id.animator_view)
-        animatorView.setAnimateSpeed(animateSpeed)
-        animatorView.setOnClickListener {
-            // Restart the animation.
-            animatorView.resetPaths = true
-            animatorView.resetPaths
-            animatorView.strokePathCounter = 0
-            animatorView.invalidate()
+        with(animatorView) {
+            setAnimateStepDistance(animateSpeed)
+            setOnClickListener {
+                // Restart the animation.
+                resetPaths = true
+                strokePathCounter = 0
+                animatorView.invalidate()
+            }
         }
         // If user touches screen outside of the animate view, exit.
         findViewById<View>(R.id.animate_layout).setOnClickListener { v: View ->
@@ -110,14 +116,13 @@ class Animator : Activity() {
             t.show()
         }
     }
-
     // set the animate speed to user prefs and in the animator view.
     private fun setAnimateSpeed(speed: Int) {
         val e = prefs.edit()
         e.putInt("animateSpeed", speed)
         e.apply()
         animateSpeed = speed
-        animatorView.setAnimateSpeed(speed)
+        animatorView.setAnimateStepDistance(speed)
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View,
@@ -139,9 +144,9 @@ class Animator : Activity() {
         val itemId = item.itemId
         var rv = true
         when (itemId) {
-            R.id.animate_slow -> setAnimateSpeed(0)
-            R.id.animate_normal -> setAnimateSpeed(1)
-            R.id.animate_fast -> setAnimateSpeed(2)
+            R.id.animate_slow -> setAnimateSpeed(ANIMATE_SLOW)
+            R.id.animate_normal -> setAnimateSpeed(ANIMATE_NORMAL)
+            R.id.animate_fast -> setAnimateSpeed(ANIMATE_FAST)
             else -> {
                 // Log.d("Animator", String.format(
                 //        "menu item unhandled:0x%08x", itemId))
