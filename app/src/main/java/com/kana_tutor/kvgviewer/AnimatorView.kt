@@ -28,12 +28,14 @@ import android.graphics.PathMeasure
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.util.Log
 import android.util.TypedValue
 import android.util.TypedValue.COMPLEX_UNIT_DIP
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.kana_tutor.kvgviewer.KvgChar.KvgAnnotation
 import com.kana_tutor.kvgviewer.KvgChar.KvgCharPath
+import java.lang.System.currentTimeMillis
 
 private const val TAG = "AnimatorView"
 // our own personal exception.
@@ -314,15 +316,28 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     private val dpi_1 = TypedValue.applyDimension(
         COMPLEX_UNIT_DIP, 1F, resources.displayMetrics)
     // dpi...FAS
+
+    // render rate milliseconds. sets our frame rate.  This rate was chosen, $sleepTime -> ${sleepTime - currentTimeMillis() + startTime}"
+    // because my oldest device (android 4.4) could handle it.
+    private var renderRate = 40
+
     private val stepDistance = mapOf(
-        ANIMATE_SLOW to 4 * dpi_1,
-        ANIMATE_NORMAL to 10 * dpi_1,
-        ANIMATE_FAST to 17 * dpi_1)
+        ANIMATE_SLOW to 8,
+        ANIMATE_NORMAL to 4,
+        ANIMATE_FAST to 1)
     // length of each animation step in DPI.
-    private var animateStepDistance = stepDistance[ANIMATE_NORMAL]!!
+
+    var maxIdx = 0
+    var maxRenderRate = 0
+
+    private var animateStepDistance = 30f.pxToDp()
     // rv is pix / step.
-    fun setAnimateStepDistance(speedSelector: Int) {
-        animateStepDistance = stepDistance[speedSelector]!!
+    var speedFactor = ANIMATE_NORMAL
+    fun setAnimateRenderRate(speedSelector: Int) {
+        speedFactor = stepDistance[speedSelector]!!
+        renderRate = maxRenderRate * speedFactor
+        if (maxIdx > 6) maxIdx = 6
+        Log.d(TAG, "duration: $sleepTime:$maxIdx:$maxRenderRate:$speedFactor ->$renderRate")
     }
     private lateinit var kvgStrokeInfo: KvgChar.KvgStrokeInfo
     // convert stroke path info from the avg file into
@@ -430,27 +445,24 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 renderText(i)
         }
     }
-    // render rate milliseconds. sets our frame rate.  This rate was chosen
-    // because my oldest device (android 4.4) could handle it.
-    private val renderRate = 75
     var resetPaths = false
     var x = 0
+    private var sleepTime = 0L
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        var pause = false
-        startTime = System.currentTimeMillis()
+        var interStrokePause = false
+        startTime = currentTimeMillis()
 
         canvas.drawPaint(bgPaint)
         canvas.renderGhostImage()
         canvas.renderGrid()
-
         if (strokePathCounter <= renderPaths.lastIndex) {
             if (startNewLine) {
                 // either this is the first line or the
                 // line we just drew reached it's end.
                 startNewLine = false
                 strokedDistance = 0f
-                pause = true
+                interStrokePause = true
                 // if a reset occurred, deal with it when
                 // starting a new line.
                 if (resetPaths) {
@@ -462,7 +474,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 // set the new path and measure it's length.
                 pathMeasure.setPath(
                     renderPaths[strokePathCounter],
-                    false)
+                    false
+                )
                 pathMeasure.getPosTan(strokedDistance, pos, null)
                 // save the overall length od this path...
                 pathLength = pathMeasure.length
@@ -483,8 +496,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                 // getPosTan pins the distance along the Path and
                 // computes the position and the tangent.  This sets
                 // the position for the move-to segment.
-                canvas.drawCircle(pos[0], pos[1],
-                    0.8f * animateStrokeWidth, blurredCursorPaint)
+                canvas.drawCircle(
+                    pos[0], pos[1],
+                    0.8f * animateStrokeWidth, blurredCursorPaint
+                )
 
                 pathMeasure.getPosTan(strokedDistance, pos, null)
                 // This draws our path.
@@ -493,11 +508,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             // Animation happens here -- invalidate restarts render if necessary.
             // Using a calculated period measured from the start of the
             // render gives a steady refresh rate.
-            var sleepTime =
-                renderRate - System.currentTimeMillis() + startTime
-            if (pause)
-                sleepTime += 500
-            postInvalidateDelayed(sleepTime)
         }
         canvas.drawPath(renderedPath, renderedCharPaint)
         canvas.renderText(0..strokePathCounter)
@@ -505,12 +515,37 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         // to mark the end of thr last stroke.
         if (strokePathCounter == renderPaths.size) {
             @Suppress("UnusedImport")
-            canvas.drawCircle(pos[0], pos[1],
-                0.5f * animateStrokeWidth, dotCursorPaint)
+            canvas.drawCircle(
+                pos[0], pos[1],
+                0.5f * animateStrokeWidth, dotCursorPaint
+            )
+        } else {
+            canvas.drawCircle(
+                pos[0], pos[1],
+                0.8f * animateStrokeWidth, blurredCursorPaint
+            )
         }
-        else {
-            canvas.drawCircle(pos[0], pos[1],
-                0.8f * animateStrokeWidth, blurredCursorPaint)
+        sleepTime = renderRate - currentTimeMillis() + startTime
+        if (interStrokePause)
+            sleepTime += 300
+        // use first 5 segments to determine max render speed.
+        if (maxIdx < 5) {
+            sleepTime = 0
+            maxIdx++
+            maxRenderRate += (currentTimeMillis() - startTime).toInt()
         }
+        else if (maxIdx == 5) {
+            maxRenderRate = (1.25F * (maxRenderRate / maxIdx).toFloat()).toInt()
+            renderRate = maxRenderRate * speedFactor
+            maxIdx++
+        }
+        if (maxIdx <= 6) {
+            // Just print some info on current render values
+            Log.d(TAG, "duration: $maxIdx:$maxRenderRate:" +
+                    "$speedFactor -> $renderRate:" +
+                    "sleeptime = $sleepTime")
+            maxIdx++
+        }
+        postInvalidateDelayed(sleepTime)
     }
 }

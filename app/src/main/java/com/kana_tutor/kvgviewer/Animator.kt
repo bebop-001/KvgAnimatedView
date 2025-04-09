@@ -56,7 +56,7 @@ class Animator : Activity() {
         // DisplayProperties(this, R.id.animate_layout)
         animatorView = findViewById(R.id.animator_view)
         with(animatorView) {
-            setAnimateStepDistance(animateSpeed)
+            setAnimateRenderRate(animateSpeed)
             setOnClickListener {
                 // Restart the animation.
                 resetPaths = true
@@ -122,7 +122,7 @@ class Animator : Activity() {
         e.putInt("animateSpeed", speed)
         e.apply()
         animateSpeed = speed
-        animatorView.setAnimateStepDistance(speed)
+        animatorView.setAnimateRenderRate(speed)
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View,
