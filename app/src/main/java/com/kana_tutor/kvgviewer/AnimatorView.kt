@@ -278,20 +278,21 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     }
 
     // speed of animation is determined by number of steps.
-    // More steps per frame == faster animation.
-    //distance each animationStepDistance
+    // Shorter steps means more steps per frame means slower animation.
     private val dpi_1 = TypedValue.applyDimension(
         COMPLEX_UNIT_DIP, 1F, resources.displayMetrics)
     private val stepDistance = mapOf(
         ANIMATE_SLOW to 4 * dpi_1,
         ANIMATE_NORMAL to 10 * dpi_1,
         ANIMATE_FAST to 17 * dpi_1)
+    // length of each animation step in DPI.
     private var animateStepDistance = stepDistance[ANIMATE_NORMAL]!!
-    private var animateSteps = 0
     fun setAnimateStepDistance(speedSelector: Int) {
         animateStepDistance = stepDistance[speedSelector]!!
     }
     private lateinit var kvgStrokeInfo: KvgChar.KvgStrokeInfo
+    // convert stroke path info from the avg file into
+    // android graphic paths.
     private fun getRenderPaths(
         strokePaths: List<KvgCharPath>
     ) : Array<Path> {
@@ -323,7 +324,10 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         return paths.toTypedArray()
     }
     // This iw where things really start.  The animator sends
-    // the stroked char which contains the Kvg stroke info.
+    // the stroked char which contains the Kvg stroke info
+    // in the form of an avg file.  An avg file hplds the
+    // stroke, annotation, width and height extracted from
+    // KvgKanji .svg file.
     fun setStrokedChar(strokedChar: KvgChar) {
         kvgStrokeInfo = strokedChar.kvgStrokeInfo
         fun KvgAnnotation.applyScaleMatrix(
@@ -345,8 +349,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         scaleMatrix.setScale(
             layoutWidth/ charWidth, layoutHeight/ charHeight,
             0f, 0f)
-
-        val renderPaths = getRenderPaths(kvgStrokeInfo.getPaths())
+        // convert .avg text info into android graphic paths.
+        val renderPaths = getRenderPaths(kvgStrokeInfo.getKvgPaths())
         renderPaths.forEach { it.transform(scaleMatrix) }
         ghostPath = renderPaths
         this.renderPaths = renderPaths

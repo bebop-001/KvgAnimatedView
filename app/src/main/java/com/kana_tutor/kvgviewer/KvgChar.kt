@@ -116,16 +116,16 @@ class KvgChar (
             range.map{fromInfo[it]}.toList()
         fun getAnnotation(idx: Int): KvgAnnotation?
                 = getKvgStrokeInfo(idx)?.annotation
-        fun getPath(idx: Int): KvgCharPath?
-                = getKvgStrokeInfo(idx)?.path
-        fun getPaths(
-            range: IntRange = 0..fromInfo.size
-        ): List<KvgCharPath> =
-            range.mapNotNull { getPath(it) }.toList()
         fun getAnnotations(
             range: IntRange = 0..fromInfo.size
         ): List<KvgAnnotation> =
             range.mapNotNull { getAnnotation(it) }.toList()
+        fun getKvgPath(idx: Int): KvgCharPath?
+                = getKvgStrokeInfo(idx)?.path
+        fun getKvgPaths(
+            range: IntRange = 0..fromInfo.size
+        ): List<KvgCharPath> =
+            range.mapNotNull { getKvgPath(it) }.toList()
     }
     class KvgCharPath (strokeIn : String) {
         val absSegments = mutableListOf<KvgStrokePath>()
@@ -206,7 +206,6 @@ class KvgChar (
                     .map{it.value.toFloat()}
                     .toList().toTypedArray()
                 saveToAbsSeg(op, coord)
-                // println("nextLine" + "KvgCharPath:Segments:${segments.map { it }}")
             }
         }
         override fun toString(): String {
@@ -216,6 +215,9 @@ class KvgChar (
     val kvgStrokeInfo = KvgStrokeInfo()
 
     init {
+        // Parse the input .abs file from the buffered
+        // reader passed in and save it to thr
+        // KvgStrokeInfo class.
         var line = ""
         var lineNumber = 1
         fun BufferedReader.nextLine (): Boolean {
@@ -255,7 +257,7 @@ class KvgChar (
         }
     }
     override fun toString() : String {
-        val pathsSize = kvgStrokeInfo.getPaths().size
+        val pathsSize = kvgStrokeInfo.getKvgPaths().size
         val annotationsSize = kvgStrokeInfo.getAnnotations().size
         if (pathsSize != annotationsSize)
             throw RuntimeException("$TAG: expected same annotation and stroke count.\n" +
