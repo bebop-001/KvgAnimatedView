@@ -100,7 +100,7 @@ my @renderFiles = (defined $RENDER_FILE)
     ? ( $RENDER_FILE )
     : grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
 
-my $pathRegex = qr{<path\s+id=.*s(\d+)".*\sd="([^"]+")};
+my $pathRegex = qr{<path\s+id=.*s(\d+)".*\sd="([^"]+)"};
 my $widthRegex = qr {
     <svg\s.*width="([^"]+)".*height="([^"]++)
 }x;
