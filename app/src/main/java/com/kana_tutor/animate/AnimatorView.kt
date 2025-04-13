@@ -15,7 +15,7 @@
  */
 @file:Suppress("UnnecessaryVariable", "unused", "PrivatePropertyName")
 
-package com.kana_tutor.kvgviewer
+package com.kana_tutor.animate
 
 import android.content.Context
 import android.graphics.BlurMaskFilter
@@ -33,8 +33,8 @@ import android.util.TypedValue
 import android.util.TypedValue.COMPLEX_UNIT_DIP
 import android.view.View
 import androidx.core.content.ContextCompat
-import com.kana_tutor.kvgviewer.KvgChar.KvgAnnotation
-import com.kana_tutor.kvgviewer.KvgChar.KvgCharPath
+import com.kana_tutor.animate.KvgChar.KvgAnnotation
+import com.kana_tutor.animate.KvgChar.KvgCharPath
 import java.lang.System.currentTimeMillis
 
 private const val TAG = "AnimatorView"
@@ -541,7 +541,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         }
         if (maxIdx <= 6) {
             // Just print some info on current render values
-            Log.d(TAG, "duration: $maxIdx:$maxRenderRate:" +
+            Log.d(
+                TAG, "duration: $maxIdx:$maxRenderRate:" +
                     "$speedFactor -> $renderRate:" +
                     "sleeptime = $sleepTime")
             maxIdx++

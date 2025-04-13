@@ -15,7 +15,7 @@
  */
 @file:Suppress("FunctionName", "LocalVariableName", "CascadeIf")
 
-package com.kana_tutor.kvgviewer
+package com.kana_tutor.animate
 
 import java.io.BufferedReader
 
@@ -251,7 +251,8 @@ class KvgChar (
                         val (id, posX, posY, text) = arg.split(commasSplitRegex)
                         kvgStrokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
                             Pair(posX.toFloat(), posY.toFloat()), text
-                        ))
+                        )
+                        )
                     }
                 }
             }

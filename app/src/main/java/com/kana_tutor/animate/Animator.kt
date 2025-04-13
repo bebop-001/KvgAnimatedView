@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kana_tutor.kvgviewer
+package com.kana_tutor.animate
 
 import android.app.Activity
 import android.content.SharedPreferences
@@ -26,6 +26,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
+import com.kana_tutor.kvgviewer.R
 import java.io.BufferedReader
 
 private const val TAG = "Animator"
@@ -108,7 +109,7 @@ class Animator : Activity() {
             showSpeedToast = false
             val t = Toast.makeText(
                     applicationContext,
-                    R.string.show_speed_hint,
+                R.string.show_speed_hint,
                     LENGTH_SHORT)
             t.setGravity(
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,

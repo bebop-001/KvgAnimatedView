@@ -24,6 +24,8 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.kana_tutor.animate.AnimateInfo
+import com.kana_tutor.animate.Animator
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -34,14 +36,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        sharedPreferences = getSharedPreferences(
-            getString(R.string.app_name), Context.MODE_PRIVATE)
-        pathFiles.addAll(
-            assets.list("paths")!!
-                .map{"paths/$it"}
-        )
+        AnimateInfo.initResults.observe { val (success, mess) = it
+                Toast.makeText(this,
+                "AnimateInfo init results:" +
+                    "${if(success) "Success" else "FAIL"}" +
+                    "\n$mess",
+                    Toast.LENGTH_LONG
+                ).show()
+        }
         val animateButton = findViewById<Button>(R.id.animate_char_button)
         animateButton.setOnClickListener { animationOnClick() }
+    }
+
+    override fun onResume() {
+        super.onResume()
     }
 
     private fun startAnimator(renderChar: String) {
