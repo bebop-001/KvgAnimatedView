@@ -45,6 +45,11 @@ my $USAGE = "USAGE: $funcName [-f=svgFile] [-k|-K|-a] [char]
     -k  : Create only the kana files
     -K  : Create only the Kanji files (default)
     -a  : Create all files
+    -n=N: Concatonate N path files sorted by their
+        : kanji char rounded up if more than N chars are wncountered.
+    -f=svgFile: do only file svgFile,
+    -z  : Gzip output files.
+    -v=kvgVwrsion: Put the kvg version in the TOC file.
     char: Create a path file for 'char' only.
     Kvg svg files should be under the svg directory under the
     path to this executable.  Path files are put in the current
@@ -58,23 +63,38 @@ my $pathFileDir = "$funcDir/paths";
 unless (-d $pathFileDir) {
     die $USAGE, "Path output directory $pathFileDir not found.\n"}
 my @args = @ARGV;
-my ($RENDER_CHAR, $RENDER_MODE, $RENDER_FILE) = (undef, "kanji", undef);
+my ($RENDER_CHAR, $RENDER_MODE, $RENDER_FILE,
+    $N_CHARS, $GZIP, $KVG_VERSION) = (undef, "kanji", undef, 1, 0, undef);
 while(defined(my $arg = shift @args)) {
-    if ($arg =~ /-f=(.*)/) {
-        if (-f $1) {
-            $RENDER_FILE = $1 }
+    if ($arg =~ /^(-[a-z])=(.*)/) {
+        my ($a, $b) = ($1,$2);
+        if ($a eq "-f") {
+            unless (-f $2) {
+                die "$arg: $b not a file.\n"}
+            $RENDER_FILE = $b }
+        elsif ($a eq "-n") {
+            unless($b =~ /^\d+$/) {
+                die "$arg: $b not a a number.\n"}
+            $N_CHARS = $b;
+        }
+        elsif ($1 eq '-v') {
+            $KVG_VERSION = $2;
+        }
         else {
-            die "$arg: $1 not a file.\n"}
+            die $USAGE, "$arg: Not a valid argument.\n";
+        }
     }
-    elsif ($arg =~ /^-([akK])$/) {
-        $RENDER_MODE = ($1 eq "a") ? "all"
-            : ($1 eq "k") ? "kana"
+    elsif ($arg =~ /^(-[akK])$/) {
+        $RENDER_MODE = ($1 eq "-a") ? "all"
+            : ($1 eq "-k") ? "kana"
                 : "kanji";
     }
-    else {
-        $RENDER_CHAR = $arg;
+    elsif ($arg eq "-z" ) {
+        $GZIP = 1
     }
-    last;
+    else {
+        die $USAGE, "Unexpected: \"$arg\"\n";
+    }
 }
 unless (defined $RENDER_MODE || defined $RENDER_FILE) {
     die $USAGE, "Please use render mofe '-a', '-k', or '-K'.\n";
@@ -86,7 +106,7 @@ my %chrRange = (
     katakana => qr/[\x{30A0}-\x{30FF}]/,
     kanji => qr/[\x{3400}-\x{4DB5}\x{4E00}-\x{9FCB}\x{F900}-\x{FA6A}]/,
 );
-my $ordRegex = qr{^.*/([a-fA-F0-9]{5})};
+my $ordRegex = qr{^(?:.*/)*([a-fA-F0-9]{5})};
 sub toOrd { ($_[0] =~ $ordRegex) [0] }
 sub toChar { chr(hex(toOrd($_[0]))) }
 sub ordIsIn {
@@ -96,9 +116,15 @@ sub ordIsIn {
         : ($chr =~ $chrRange{$range}) ? $chr
             : undef
 }
-my @renderFiles = (defined $RENDER_FILE)
+my @svgFiles = (defined $RENDER_FILE)
     ? ( $RENDER_FILE )
     : grep defined ordIsIn($_, $RENDER_MODE), <$svgFilesDir/*.svg>;
+my %svgFilesByChar = ();
+for (@svgFiles) {
+    my $char = toChar($_);
+    unless (defined $svgFilesByChar{$char}) {$svgFilesByChar{$char} = []};
+    push @{$svgFilesByChar{$char}}, $_;
+}
 
 my $pathRegex = qr{<path\s+id=.*s(\d+)".*\sd="([^"]+)"};
 my $widthRegex = qr {
@@ -118,6 +144,9 @@ sub Get {
     my $lineNumber = 0;
     $fName = basename $file;
     $renderedChar = toChar($file);
+    my $renderFile = ($fName =~ m{(-[^.]+).svg$})
+        ? "$renderedChar$1.avg"
+        : "$renderedChar.avg";
     while (<F>) {
         chomp;
         $lineNumber++;
@@ -150,7 +179,7 @@ sub Get {
             scalar @paths . " paths: " .
             join(", ", @expected));
     }
-    push @pathInfo, 'N' . $fName, 'C' . $renderedChar, $width;
+    push @pathInfo, 'P' . $fName, 'N' . $renderFile, $width;
     # interleave paths and annotation so path annotation
     # is displayed as path is finished.
     foreach my $i (0..$#paths) {
@@ -159,25 +188,20 @@ sub Get {
     }
     return @pathInfo;
 }
-sub getAvgFile {
+sub getAvgInfo {
     my $svgFile = shift @_;
+    my $rv = "";
     if (-f $svgFile) {
         my ($ord, $other) = $svgFile =~ m{/([0-9a-fA-f]{5})([^.]+)*.svg$};
         my $renderedChar = chr(hex($ord));
         my @paths = Get($svgFile);
-        my $pathFile = "$pathFileDir/$renderedChar" . ($other || '') . ".avg";
-        open (OUT2, "> $pathFile") || die "open $pathFile for output FAILED:$!\n";
-        binmode(OUT2, ':utf8');
         if (grep !defined $_, @paths) {
             push @failed, "$svgFile: undef.";
             print "* ";
         }
-        else {
-            print OUT2 join("\n", @paths, "");
-            print "$renderedChar ";
-        }
-        close OUT2;
+        $rv = join "\n", @paths, '';
     }
+    return $rv;
 }
 
 my @kana = qw (
@@ -204,12 +228,72 @@ my @kana = qw (
 );
 my (@missing, @SvgFiles);
 my $licenseFile = "$pathFileDir/License.txt";
-open (OUT, "> $licenseFile") || die "open $licenseFile for output FAILED:$!\n";
+open (OUT, "> $licenseFile")
+    || die "open $licenseFile for output FAILED:$!\n";
 binmode(OUT, ':utf8');
 print OUT $HEADER;
 close OUT;
-foreach my $renderFile (@renderFiles) {
-    getAvgFile($renderFile);
+sub getAvgFileName {
+    my @paths = @_;
+    my %x = ();
+    # get a sorted uniq list of characters
+    # the parsed paths represents
+    map {
+        $_ =~ m{^N(.)};
+        $x{$1}++}
+    map{
+        grep /^N(.)/, split "\n", $_} @paths;
+    my @chars = sort keys %x;
+    # file name is first and last
+    # charcters in paths.
+    return (@chars > 1)
+            ? "paths/$chars[0]-$chars[-1].avg"
+            : "paths/$chars[0].avg";
+}
+sub putPaths {
+    my @paths = @_;
+    my $avgFile = getAvgFileName(@paths);
+    my $pathInfo = join('', @paths);
+    open (OUT2, "> $avgFile")
+        || die "open $avgFile for output FAILED:$!\n";
+    binmode(OUT2, ':utf8');
+    print OUT2 $pathInfo;
+    close OUT2;
+    my @files = map {m{^.(.*)}; $1}
+        grep (m{^N},
+            split("\n", join('', @paths)));
+    print TOC join(" ", $avgFile, "=", @files), "\n";
+
+    if ($GZIP) {
+        unlink("$avgFile.gz");
+        system ('/usr/bin/gzip', $avgFile);
+    }
+}
+my @paths = ();
+my @keysSorted = sort{$a cmp $b} keys %svgFilesByChar;
+open F, '> keysSorted.txt';
+binmode(F, ':utf8');
+print F join("\n", @keysSorted, '');
+close F;
+open TOC, '> paths/avg.toc.txt';
+binmode(TOC, ':utf8');
+if (defined $KVG_VERSION) {
+    print TOC "kvgVersion = $KVG_VERSION\n";
+}
+
+for my $key (@keysSorted) {
+    for my $svgFile (@{$svgFilesByChar{$key}}) {
+        push @paths, getAvgInfo($svgFile);
+    }
+    if (@paths > $N_CHARS) {
+        putPaths(@paths);
+        @paths = ();
+    }
+}
+close TOC;
+if (@paths > 0) {
+    putPaths(@paths);
+    @paths = ();
 }
 if (@failed) {
     @failed =  map {$_ =~ s{:[^:]+/}{}; $_ } @failed;
