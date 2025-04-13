@@ -38,7 +38,7 @@ class AnimateInfo {
             if (avgToc.isNotEmpty()) {
                 val toc = avgToc.split(("\n"))
                 for(line in toc) {
-                    var matchResults = fileInfoRegex.find(line)
+                    val matchResults = fileInfoRegex.find(line)
                         ?.groupValues?.takeLast(3)?.toList()
                     if (matchResults != null) {
                         val (a, b, fileString) = matchResults

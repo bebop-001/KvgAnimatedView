@@ -16,9 +16,7 @@
 
 package com.kana_tutor.kvgviewer
 
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -28,10 +26,6 @@ import com.kana_tutor.animate.AnimateInfo
 import com.kana_tutor.animate.Animator
 
 class MainActivity : AppCompatActivity() {
-    companion object {
-        lateinit var sharedPreferences: SharedPreferences
-            private set
-    }
     private val pathFiles = mutableListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         AnimateInfo.initResults.observe { val (success, mess) = it
                 Toast.makeText(this,
                 "AnimateInfo init results:" +
-                    "${if(success) "Success" else "FAIL"}" +
+                    (if(success) "Success" else "FAIL") +
                     "\n$mess",
                     Toast.LENGTH_LONG
                 ).show()
@@ -48,12 +42,8 @@ class MainActivity : AppCompatActivity() {
         animateButton.setOnClickListener { animationOnClick() }
     }
 
-    override fun onResume() {
-        super.onResume()
-    }
-
     private fun startAnimator(renderChar: String) {
-        val renderFile = pathFiles.firstOrNull() {
+        val renderFile = pathFiles.firstOrNull {
             it.contains(renderChar)
         }
         if (renderFile != null) {
