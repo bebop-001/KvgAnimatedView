@@ -71,7 +71,7 @@ class AnimatorInfo {
 
         // check assets and local memory for a file.
         fun getFileText(fileName: String): String? {
-            var bytes: ByteArray? = null
+            var bytes: ByteArray?
             try {
                 if (File(externalStorageRoot, fileName).exists()) {
                     bytes = File(externalStorageRoot, fileName).readBytes()
@@ -93,7 +93,7 @@ class AnimatorInfo {
             return bytes?.toString(Charset.defaultCharset())
         }
         fun getPathInfo(renderChar: Char): String? {
-            var pathInfo: String?
+            val pathInfo: String?
             val charRange: CharRange = charToFilesInfo.keys.first{
                 renderChar in it
             }
