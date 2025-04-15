@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.kana_tutor.animate
 
 import android.app.Activity
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
 import android.view.Gravity
@@ -27,8 +27,8 @@ import android.view.View
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
 import com.kana_tutor.kvgviewer.R
-import java.io.BufferedReader
 
+@Suppress("unused")
 private const val TAG = "Animator"
 
 const val ANIMATE_SLOW = 0
@@ -39,7 +39,8 @@ const val ANIMATE_FAST = 2
 class Animator : Activity() {
     companion object {
         private var showSpeedToast = true
-        private var renderChar = ""
+        private var renderChar:Char = 'x'
+        private var renderStyle = ""
     }
 
     private var animateSpeed = ANIMATE_NORMAL
@@ -51,7 +52,7 @@ class Animator : Activity() {
         prefs = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE)
         animateSpeed = prefs.getInt("animateSpeed", ANIMATE_NORMAL)
         if (prefs.getString("renderChar", null) != null)
-            renderChar = prefs.getString("renderChar", null)!!
+            renderChar = prefs.getString("renderChar", "x")!![0]
 
         // cause display properties to init.
         // DisplayProperties(this, R.id.animate_layout)
@@ -73,26 +74,19 @@ class Animator : Activity() {
 
         // If we received an intent from the main app. set up for animation.
         if (intent != null) {
-            if (intent.getStringExtra("renderFile") != null) {
-                renderChar = intent.getStringExtra("renderChar")!!
-                val fName = intent.getStringExtra("renderFile")!!
+            if (intent.getCharExtra("renderChar", 'x') != 'x') {
+                renderChar = intent.getCharExtra(
+                    "renderChar", 'x')
                 prefs.edit()
-                    .putString("renderChar", renderChar)
+                    .putString("renderChar", renderChar.toString())
                     .apply()
+                renderStyle = intent.getStringExtra("renderStyle") ?: ""
                 intent = null
-                val strokedChar: KvgChar?
-                try {
-                    val reader: BufferedReader = assets.open(
-                        fName
-                    ).bufferedReader()
-                    strokedChar = KvgChar(reader)
-                    animatorView.setStrokedChar(strokedChar)
-                }
-                catch (e:Exception) {
-                    val mess = "open $fName Failed: $e"
-                    Toast.makeText(this,mess, Toast.LENGTH_LONG).show()
-                    Log.d(TAG, mess)
-                }
+                val strokedChar: KvgStrokedChar?
+                val pathInfo = AnimatorInfo.getPathInfo(renderChar)
+                strokedChar = if(pathInfo != null) KvgStrokedChar(renderChar, pathInfo)
+                    else KvgStrokedChar(renderChar,"")
+                animatorView.setStrokedChar(strokedChar)
             }
         }
         // register for the speed-set context menu.

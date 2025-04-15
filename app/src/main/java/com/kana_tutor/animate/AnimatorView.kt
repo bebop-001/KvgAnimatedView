@@ -33,8 +33,8 @@ import android.util.TypedValue
 import android.util.TypedValue.COMPLEX_UNIT_DIP
 import android.view.View
 import androidx.core.content.ContextCompat
-import com.kana_tutor.animate.KvgChar.KvgAnnotation
-import com.kana_tutor.animate.KvgChar.KvgCharPath
+import com.kana_tutor.animate.KvgStrokedChar.KvgAnnotation
+import com.kana_tutor.animate.KvgStrokedChar.KvgCharPath
 import java.lang.System.currentTimeMillis
 
 private const val TAG = "AnimatorView"
@@ -339,7 +339,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         if (maxIdx > 6) maxIdx = 6
         Log.d(TAG, "duration: $sleepTime:$maxIdx:$maxRenderRate:$speedFactor ->$renderRate")
     }
-    private lateinit var kvgStrokeInfo: KvgChar.KvgStrokeInfo
+    private lateinit var kvgStrokeInfo: KvgStrokedChar.KvgStrokeInfo
     // convert stroke path info from the avg file into
     // android graphic paths.
     private fun getRenderPaths(
@@ -364,7 +364,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
                         val (x0,y0,xr,yr,x1,y1) = coord
                         p.cubicTo(x0,y0,xr,yr,x1,y1)
                     }
-                    else -> throw RuntimeException("KvgChar.getPaths: " +
+                    else -> throw RuntimeException("KvgStrokedChar.getPaths: " +
                         "Unexpected operator:$op")
                 }
             }
@@ -377,7 +377,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
     // in the form of an avg file.  An avg file holds the
     // stroke, annotation, width and height extracted from
     // KvgKanji .svg file.
-    fun setStrokedChar(strokedChar: KvgChar) {
+    fun setStrokedChar(strokedChar: KvgStrokedChar) {
         kvgStrokeInfo = strokedChar.kvgStrokeInfo
         fun KvgAnnotation.applyScaleMatrix(
             scaleMatrix: Matrix

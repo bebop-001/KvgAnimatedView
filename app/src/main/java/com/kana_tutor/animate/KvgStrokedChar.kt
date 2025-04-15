@@ -17,16 +17,12 @@
 
 package com.kana_tutor.animate
 
-import java.io.BufferedReader
-
 // our own personal exception.
 class SvgConvertException(message:String) : Exception (message)
 
-private const val TAG = "KvgChar"
+private const val TAG = "KvgStrokedChar"
 @Suppress("unused")
-class KvgChar (
-    fileHandle : BufferedReader
-) {
+class KvgStrokedChar (animateChar:Char, pathInfo: String) {
     private var name = ""
     private var renderChar = ""
     // width/height
@@ -216,44 +212,52 @@ class KvgChar (
     val kvgStrokeInfo = KvgStrokeInfo()
 
     init {
-        // Parse the input .abs file from the buffered
-        // reader passed in and save it to thr
-        // KvgStrokeInfo class.
-        var line = ""
-        var lineNumber = 1
-        fun BufferedReader.nextLine (): Boolean {
-            val l = readLine()
-            line = l ?: ""
-            lineNumber++
-            return l != null
+        val lineBuffer = pathInfo.split("\n").toMutableList()
+        var state = 0
+        var i = 0
+        // simple state machine to filter record for animate char
+        // from other records -- if any.
+        while (true) {
+            val p = lineBuffer[i].startsWith("P")
+            when (state) {
+                // remove first from buffer until start of animateChar path info
+                0 -> {
+                    val ch = lineBuffer[1].contains("""^N$animateChar""".toRegex())
+                    if (p && ch) state++ else lineBuffer.removeFirst()
+                }
+                // find end of record
+                1 -> if (!p && i < lineBuffer.lastIndex) i++ else state++
+                // clear from end od record.
+                2 -> if (lineBuffer.lastIndex < i) lineBuffer.removeLast()
+            }
         }
+
         val opNoIdRegex = """(.)(.*)""".toRegex()
         val argToPathRegex ="""(^\d+)(.*)""".toRegex()
         val commasSplitRegex = """\s*,\s*""".toRegex()
-        while (fileHandle.nextLine()) {
-            if (line.isNotEmpty()){
-                val (op, arg) = opNoIdRegex.find(line)!!.destructured
-                when (op) {
-                    "N" -> { name = arg }
-                    "C" -> { renderChar = arg }
-                    "W" -> {// dimensions
-                        val (posX, posY) = arg
-                            .split(",")
-                            .map { it.toFloat() }
-                            .toFloatArray()
-                        dimensions = Pair(posX, posY)
-                    }
-                    "S" -> {
-                        val (id, path) = argToPathRegex.find(arg)!!.destructured
-                        kvgStrokeInfo.putPath(id.toInt(), KvgCharPath(path))
-                    }
-                    "X" -> {// text
-                        val (id, posX, posY, text) = arg.split(commasSplitRegex)
-                        kvgStrokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
-                            Pair(posX.toFloat(), posY.toFloat()), text
-                        )
-                        )
-                    }
+        val startRecordsRegex = """^N(.)""".toRegex()
+        while (lineBuffer.isNotEmpty()) {
+            val line = lineBuffer.removeFirst()
+            val (op, arg) = opNoIdRegex.find(line)!!.destructured
+            when (op) {
+                "N" -> { name = arg }
+                "C" -> { renderChar = arg }
+                "W" -> {// dimensions
+                    val (posX, posY) = arg
+                        .split(",")
+                        .map { it.toFloat() }
+                        .toFloatArray()
+                    dimensions = Pair(posX, posY)
+                }
+                "S" -> {
+                    val (id, path) = argToPathRegex.find(arg)!!.destructured
+                    kvgStrokeInfo.putPath(id.toInt(), KvgCharPath(path))
+                }
+                "X" -> {// text
+                    val (id, posX, posY, text) = arg.split(commasSplitRegex)
+                    kvgStrokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
+                        Pair(posX.toFloat(), posY.toFloat()), text)
+                    )
                 }
             }
         }

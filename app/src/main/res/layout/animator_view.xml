@@ -40,7 +40,7 @@
              NOTE! the layout must also contain
              xmlns:app="http://schemas.android.com/apk/res-auto"
              to pull in the app namespace. -->
-		<com.kana_tutor.kvgviewer.AnimatorView
+		<com.kana_tutor.animate.AnimatorView
 			android:id="@+id/animator_view"
 			android:layout_width="350dp"
 			android:layout_height="350dp"

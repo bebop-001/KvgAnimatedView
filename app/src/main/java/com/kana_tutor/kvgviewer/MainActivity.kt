@@ -18,21 +18,25 @@ package com.kana_tutor.kvgviewer
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.kana_tutor.animate.AnimateInfo
+import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.Animator
+import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
+import com.kana_tutor.animate.AnimatorInfo.Companion.supportedtyles
 
+private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
     private val pathFiles = mutableListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        AnimateInfo.initResults.observe { val (success, mess) = it
+        AnimatorInfo.initResults.observe { val (success, mess) = it
                 Toast.makeText(this,
-                "AnimateInfo init results:" +
+                "AnimatorInfo init results:" +
                     (if(success) "Success" else "FAIL") +
                     "\n$mess",
                     Toast.LENGTH_LONG
@@ -42,27 +46,28 @@ class MainActivity : AppCompatActivity() {
         animateButton.setOnClickListener { animationOnClick() }
     }
 
-    private fun startAnimator(renderChar: String) {
-        val renderFile = pathFiles.firstOrNull {
-            it.contains(renderChar)
-        }
-        if (renderFile != null) {
+    private fun startAnimator(renderChar: Char, renderStyle: String) {
+        if (supportedKanji.contains(renderChar) &&
+            supportedtyles.contains(renderStyle)) {
             val startAnimator = Intent(applicationContext, Animator::class.java)
             startAnimator.putExtra("renderChar", renderChar)
-            startAnimator.putExtra("renderFile", renderFile)
+            startAnimator.putExtra("renderStyle", renderStyle)
             startActivity(startAnimator)
         }
         else {
-            Toast.makeText(
-                this,
-                if (renderChar.isEmpty()) "skipping empty input"
-                else "Can't render \"$renderChar\". Char not found.",
-                Toast.LENGTH_SHORT
-            ).show()
+            val mess = listOf (if (supportedKanji.contains(renderChar)) ""
+            else "$renderChar: Not supported character",
+                if (supportedtyles.contains(renderStyle)) ""
+                else "$renderStyle: Not supported style"
+            ).joinToString(", ")
+            Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
+            Log.d(TAG, "StartAnimate FAILED: $mess")
         }
     }
     private fun animationOnClick() {
         val tv = findViewById<TextView>(R.id.renderChar_TXT)
-        startAnimator(tv.text.toString().trim())
+        val renderChar = tv.text.toString().trim()[0]
+        val renderStyle = ""
+        startAnimator(renderChar, renderStyle)
     }
 }
