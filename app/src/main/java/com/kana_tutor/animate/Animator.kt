@@ -84,8 +84,7 @@ class Animator : Activity() {
                 intent = null
                 val strokedChar: KvgStrokedChar?
                 val pathInfo = AnimatorInfo.getPathInfo(renderChar)
-                strokedChar = if(pathInfo != null) KvgStrokedChar(renderChar, pathInfo)
-                    else KvgStrokedChar(renderChar,"")
+                strokedChar = KvgStrokedChar(renderChar, renderStyle, pathInfo!!)
                 animatorView.setStrokedChar(strokedChar)
             }
         }

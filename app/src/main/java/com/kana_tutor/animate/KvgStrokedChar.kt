@@ -16,15 +16,17 @@
 @file:Suppress("FunctionName", "LocalVariableName", "CascadeIf")
 
 package com.kana_tutor.animate
-
 // our own personal exception.
 class SvgConvertException(message:String) : Exception (message)
 
 private const val TAG = "KvgStrokedChar"
 @Suppress("unused")
-class KvgStrokedChar (animateChar:Char, pathInfo: String) {
+class KvgStrokedChar (
+    animateChar:Char, animateStyle: String, pathInfo: String
+) {
     private var name = ""
     private var renderChar = ""
+    private var renderStyle = ""
     // width/height
     lateinit var dimensions : Pair<Float,Float>
         private set
@@ -213,35 +215,40 @@ class KvgStrokedChar (animateChar:Char, pathInfo: String) {
 
     init {
         val lineBuffer = pathInfo.split("\n").toMutableList()
-        var state = 0
-        var i = 0
-        // simple state machine to filter record for animate char
-        // from other records -- if any.
-        while (true) {
-            val p = lineBuffer[i].startsWith("P")
-            when (state) {
-                // remove first from buffer until start of animateChar path info
-                0 -> {
-                    val ch = lineBuffer[1].contains("""^N$animateChar""".toRegex())
-                    if (p && ch) state++ else lineBuffer.removeFirst()
-                }
-                // find end of record
-                1 -> if (!p && i < lineBuffer.lastIndex) i++ else state++
-                // clear from end od record.
-                2 -> if (lineBuffer.lastIndex < i) lineBuffer.removeLast()
+        fun List<String>.scanForStart(char: Char, style: String): Int? {
+            val regex = if(style.isEmpty()) """^\s*N$char.avg""".toRegex()
+                    else """^\s*N$char.$style.avg""".toRegex()
+            for (i in 0 until lastIndex) {
+                if (this[i].contains(regex))
+                    return i
             }
+            return null
         }
+        // filter the line buffer for the desired record.
+        val start =
+            lineBuffer.scanForStart(animateChar, animateStyle) ?:
+            lineBuffer.scanForStart(animateChar, "") ?:
+            throw RuntimeException("$TAG:no path found for " +
+                    "$animateChar:$animateStyle")
+        val end = (start..lineBuffer.lastIndex).firstOrNull {
+            it + 1 <= lineBuffer.lastIndex && lineBuffer[it + 1].startsWith("P")
+        } ?: lineBuffer.lastIndex
+        val pathRecord = lineBuffer.slice(start - 1..end)
+            .toMutableList()
 
         val opNoIdRegex = """(.)(.*)""".toRegex()
         val argToPathRegex ="""(^\d+)(.*)""".toRegex()
         val commasSplitRegex = """\s*,\s*""".toRegex()
-        val startRecordsRegex = """^N(.)""".toRegex()
-        while (lineBuffer.isNotEmpty()) {
-            val line = lineBuffer.removeFirst()
+        while (pathRecord.isNotEmpty()) {
+            val line = pathRecord.removeFirst()
             val (op, arg) = opNoIdRegex.find(line)!!.destructured
             when (op) {
-                "N" -> { name = arg }
-                "C" -> { renderChar = arg }
+                "P" -> { name = arg }
+                "N" -> {
+                    val (c, s) = """(.)((?:\.)[^.]+])*.avg""".toRegex()
+                        .find(arg)!!.groupValues.takeLast(2)
+                    renderChar = c; renderStyle = s
+                }
                 "W" -> {// dimensions
                     val (posX, posY) = arg
                         .split(",")
