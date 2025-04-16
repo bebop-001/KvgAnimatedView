@@ -30,7 +30,6 @@ import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
 
 private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
-    private val pathFiles = mutableListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
