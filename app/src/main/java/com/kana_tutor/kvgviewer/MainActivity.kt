@@ -26,7 +26,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.Animator
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
-import com.kana_tutor.animate.AnimatorInfo.Companion.supportedtyles
+import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
 
 private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startAnimator(renderChar: Char, renderStyle: String) {
         if (supportedKanji.contains(renderChar) &&
-            supportedtyles.contains(renderStyle)) {
+            supportedStyles.contains(renderStyle)) {
             val startAnimator = Intent(applicationContext, Animator::class.java)
             startAnimator.putExtra("renderChar", renderChar)
             startAnimator.putExtra("renderStyle", renderStyle)
@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         else {
             val mess = listOf (if (supportedKanji.contains(renderChar)) ""
             else "$renderChar: Not supported character",
-                if (supportedtyles.contains(renderStyle)) ""
+                if (supportedStyles.contains(renderStyle)) ""
                 else "$renderStyle: Not supported style"
             ).joinToString(", ")
             Toast.makeText(this, mess, Toast.LENGTH_LONG).show()

@@ -14,7 +14,7 @@ class AnimatorInfo {
         val initResults = ObservedPair(Pair(false, ""))
 
         // map char range -> { char -> file name}
-        val filesInfo = mutableMapOf<CharRange,
+        private val filesInfo = mutableMapOf<CharRange,
                 MutableMap<Char, MutableList<String>>>()
         private val toFname = mutableMapOf<CharRange, String>()
         val charRangeToFname: Map<CharRange, String> = toFname
@@ -23,7 +23,7 @@ class AnimatorInfo {
         private val kanji = mutableSetOf<Char>()
         val supportedKanji: Set<Char> = kanji
         private val styles = mutableSetOf<String>()
-        val supportedtyles: Set<String> = styles
+        val supportedStyles: Set<String> = styles
 
         init {
             val avgTocName = "paths/avg.toc.txt"
@@ -70,7 +70,7 @@ class AnimatorInfo {
         }
 
         // check assets and local memory for a file.
-        fun getFileText(fileName: String): String? {
+        private fun getFileText(fileName: String): String? {
             var bytes: ByteArray?
             try {
                 if (File(externalStorageRoot, fileName).exists()) {
@@ -93,12 +93,23 @@ class AnimatorInfo {
             return bytes?.toString(Charset.defaultCharset())
         }
         fun getPathInfo(renderChar: Char): String? {
-            val pathInfo: String?
-            val charRange: CharRange = charToFilesInfo.keys.first{
-                renderChar in it
+            var pathInfo: String?
+            var charsFile = ""
+            try {
+                val charRange: CharRange = charToFilesInfo.keys.first {
+                    renderChar in it
+                }
+                charsFile = charRangeToFname[charRange]!!
+                pathInfo = getFileText(charsFile)
             }
-            val charsFile = charRangeToFname[charRange]!!
-            pathInfo = getFileText(charsFile)
+            catch (e: Exception) {
+                Log.d (TAG, "Failed to open $charsFile for $renderChar: ${e.message}")
+                Toast.makeText(
+                    appContext,
+                    "Failed to open $charsFile for $renderChar.",
+                    Toast.LENGTH_LONG).show()
+                pathInfo = ""
+            }
             return pathInfo
         }
     }

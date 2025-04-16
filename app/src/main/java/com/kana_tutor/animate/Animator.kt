@@ -19,6 +19,7 @@ package com.kana_tutor.animate
 import android.app.Activity
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
 import android.view.Gravity
@@ -75,17 +76,24 @@ class Animator : Activity() {
         // If we received an intent from the main app. set up for animation.
         if (intent != null) {
             if (intent.getCharExtra("renderChar", 'x') != 'x') {
-                renderChar = intent.getCharExtra(
-                    "renderChar", 'x')
-                prefs.edit()
-                    .putString("renderChar", renderChar.toString())
-                    .apply()
-                renderStyle = intent.getStringExtra("renderStyle") ?: ""
-                intent = null
-                val strokedChar: KvgStrokedChar?
-                val pathInfo = AnimatorInfo.getPathInfo(renderChar)
-                strokedChar = KvgStrokedChar(renderChar, renderStyle, pathInfo!!)
-                animatorView.setStrokedChar(strokedChar)
+                try {
+                    renderChar = intent.getCharExtra(
+                        "renderChar", 'x'
+                    )
+                    prefs.edit()
+                        .putString("renderChar", renderChar.toString())
+                        .apply()
+                    renderStyle = intent.getStringExtra("renderStyle") ?: ""
+                    intent = null
+                    val strokedChar: KvgStrokedChar?
+                    val pathInfo = AnimatorInfo.getPathInfo(renderChar)
+                    strokedChar = KvgStrokedChar(renderChar, renderStyle, pathInfo!!)
+                    animatorView.setStrokedChar(strokedChar)
+                }
+                catch (e: Exception){
+                    val mess = "Render failed for $renderChar: ${e.message}"
+                    Log.d(TAG, mess)
+                }
             }
         }
         // register for the speed-set context menu.
