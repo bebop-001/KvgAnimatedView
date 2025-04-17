@@ -253,7 +253,7 @@ class KvgStrokedChar (
             when (op) {
                 "P" -> { name = arg }
                 "N" -> {
-                    val (c, s) = """(.)((?:\.)[^.]+])*.avg""".toRegex()
+                    val (c, s) = """(.)\.*([^.]+])*.avg""".toRegex()
                         .find(arg)!!.groupValues.takeLast(2)
                     renderChar = c; renderStyle = s
                 }
