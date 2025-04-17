@@ -327,12 +327,12 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         ANIMATE_FAST to 1)
     // length of each animation step in DPI.
 
-    var maxIdx = 0
-    var maxRenderRate = 0
+    private var maxIdx = 0
+    private var maxRenderRate = 0
 
     private var animateStepDistance = 30f.pxToDp()
     // rv is pix / step.
-    var speedFactor = ANIMATE_NORMAL
+    private var speedFactor = ANIMATE_NORMAL
     fun setAnimateRenderRate(speedSelector: Int) {
         speedFactor = stepDistance[speedSelector]!!
         renderRate = maxRenderRate * speedFactor
@@ -526,7 +526,8 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             )
         }
         sleepTime = renderRate - currentTimeMillis() + startTime
-        if (interStrokePause)
+        // pause at the end and start of each line.
+        if (interStrokePause || startNewLine)
             sleepTime += 300
         // use first 5 segments to determine max render speed.
         if (maxIdx < 5) {
@@ -544,7 +545,7 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
             Log.d(
                 TAG, "duration: $maxIdx:$maxRenderRate:" +
                     "$speedFactor -> $renderRate:" +
-                    "sleeptime = $sleepTime")
+                    "sleepTime = $sleepTime")
             maxIdx++
         }
         postInvalidateDelayed(sleepTime)
