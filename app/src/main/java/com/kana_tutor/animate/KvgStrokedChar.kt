@@ -16,6 +16,9 @@
 @file:Suppress("FunctionName", "LocalVariableName", "CascadeIf")
 
 package com.kana_tutor.animate
+
+import android.util.Log
+
 // our own personal exception.
 class SvgConvertException(message:String) : Exception (message)
 
@@ -241,6 +244,11 @@ class KvgStrokedChar (
         val commasSplitRegex = """\s*,\s*""".toRegex()
         while (pathRecord.isNotEmpty()) {
             val line = pathRecord.removeFirst()
+            val ops = opNoIdRegex.find(line)?.groupValues?.takeLast(2)
+            if (ops == null) {
+                Log.e(TAG, "bad line:\"$line\" parsed to null.\n")
+                continue
+            }
             val (op, arg) = opNoIdRegex.find(line)!!.destructured
             when (op) {
                 "P" -> { name = arg }
@@ -265,6 +273,9 @@ class KvgStrokedChar (
                     kvgStrokeInfo.putAnnotation(id.toInt(), KvgAnnotation(
                         Pair(posX.toFloat(), posY.toFloat()), text)
                     )
+                }
+                else -> {
+                    Log.d(TAG, "Unexpected op: \"$op\"")
                 }
             }
         }
