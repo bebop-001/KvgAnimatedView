@@ -24,6 +24,8 @@ class AnimatorInfo {
         val supportedKanji: Set<Char> = kanji
         private val styles = mutableSetOf<String>()
         val supportedStyles: Set<String> = styles
+        private val aniFiles = mutableSetOf<String>()
+        val animatorFiles: Set<String> = aniFiles
 
         init {
             val avgTocName = "paths/avg.toc.txt"
@@ -36,7 +38,7 @@ class AnimatorInfo {
             }
             val fileInfoRegex =
                 """(\S+(.)-(.)\S+)\s*=\s*(.*)$""".toRegex()
-            val fNameRegex = """^((.)((?:.)[^.]+)*.avg)$""".toRegex()
+            val fNameRegex = """^((.)-*([^.]+)*.avg)$""".toRegex()
             if (avgToc != null) {
                 val toc = avgToc.split(("\n"))
                 for (line in toc) {
@@ -52,6 +54,7 @@ class AnimatorInfo {
                             mutableMapOf()
                         }
                         val files = fileString.split("""\s+""".toRegex())
+                        aniFiles.addAll(files)
                         files.map {
                             val l = fNameRegex.find(it)
                                 ?.groupValues?.takeLast(3)

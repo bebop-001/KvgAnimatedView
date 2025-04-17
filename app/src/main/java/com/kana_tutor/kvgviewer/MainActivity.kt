@@ -18,21 +18,78 @@ package com.kana_tutor.kvgviewer
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Parcelable
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.View.OnClickListener
+import android.view.ViewGroup
+import android.widget.BaseAdapter
 import android.widget.Button
-import android.widget.TextView
+import android.widget.GridView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.Animator
+import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
 
+
 private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private var scrollState: Parcelable? = null
+    }
+    private lateinit var selectorGrid: GridView
+
+    class ViewHolder (
+        var position: Int,
+        var text: String
+    )
+
+    inner class GridAdapter: BaseAdapter() {
+        private val localList = mutableListOf<String>()
+        fun update(newStuff: Set<String>) {
+            localList.clear()
+            localList.addAll(newStuff.sorted())
+            notifyDataSetChanged()
+        }
+        override fun getCount(): Int = localList.size
+        override fun getItem(position: Int): String = localList[position]
+        override fun getItemId(position: Int): Long = localList[position].hashCode().toLong()
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            var button = convertView as Button?
+            Log.d(TAG, "getView:position:$position")
+            if (button == null) {
+                val inflater = LayoutInflater.from(parent!!.context)
+                button = inflater.inflate(
+                    R.layout.animate_select_button,
+                    null,
+                    false) as Button
+                button.setOnClickListener(OnClickListener { v ->
+                    val b = v as Button
+                    startAnimator(b.text.toString())
+                })
+            }
+            val itemText = getItem(position)
+            var vh = button.tag as ViewHolder?
+            if (vh == null) {
+                vh = ViewHolder(position, itemText)
+                button.tag = vh
+                button.text = itemText
+            }
+            else if (vh.position != position) {
+                vh.position = position
+                vh.text = itemText
+                button.text = itemText
+            }
+            return button
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        selectorGrid = findViewById(R.id.animate_select_grid)
         AnimatorInfo.initResults.observe { val (success, mess) = it
                 Toast.makeText(this,
                 "AnimatorInfo init results:" +
@@ -41,8 +98,22 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
         }
-        val animateButton = findViewById<Button>(R.id.animate_char_button)
-        animateButton.setOnClickListener { animationOnClick() }
+        val gridAdapter = GridAdapter()
+        selectorGrid.adapter = gridAdapter
+        gridAdapter.update(AnimatorInfo.animatorFiles)
+
+    }
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "onPause")
+        scrollState = selectorGrid.onSaveInstanceState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume")
+        if (scrollState != null)
+            selectorGrid.onRestoreInstanceState(scrollState)
     }
 
     private fun startAnimator(renderChar: Char, renderStyle: String) {
@@ -63,10 +134,9 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "StartAnimate FAILED: $mess")
         }
     }
-    private fun animationOnClick() {
-        val tv = findViewById<TextView>(R.id.renderChar_TXT)
-        val renderChar = tv.text.toString().trim()[0]
-        val renderStyle = ""
-        startAnimator(renderChar, renderStyle)
+    private fun startAnimator(animateName:String) {
+        val (char, style) = """^(.)-*([^.]+)*.avg$""".toRegex(RegexOption.IGNORE_CASE)
+            .find(animateName)!!.groupValues.takeLast(2)
+        startAnimator(char[0], style)
     }
 }
