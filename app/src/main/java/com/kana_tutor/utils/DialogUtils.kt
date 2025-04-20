@@ -10,7 +10,6 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.DialogInterface
-import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Typeface
 import android.text.InputType
@@ -38,15 +37,6 @@ import com.kana_tutor.kvgviewer.R
 
 @Suppress("unused")
 private const val TAG = "DialogUtils"
-
-fun dpToPix(dp: Int): Int =
-    (dp * Resources.getSystem().displayMetrics.density).toInt()
-@Suppress("unused", "DEPRECATION")
-fun spToPix(sp: Int): Int =
-    (sp * Resources.getSystem().displayMetrics.scaledDensity).toInt()
-
-
-
 // button enable/disable.  Dims button bg
 // when disabled.
 @Suppress("unused")
@@ -197,7 +187,7 @@ fun Context.selectableMonospaceDialog(
         .setTitle(title)
         .setView(tv)
     if (showDone)
-        dialogBuilder.setPositiveButton(getString(R.string.done)){ dialog, which ->
+        dialogBuilder.setPositiveButton(R.string.done){dialog, which ->
             dialog.dismiss()
         }
     val dialog = dialogBuilder.create()

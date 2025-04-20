@@ -29,17 +29,64 @@ import android.widget.Button
 import android.widget.GridView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import com.kana_tutor.animate.Animator
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 
 
 private const val TAG = "MainActivity"
+
+/*
+ * This is where the display theme is set up.  This is probably a google-nono
+ * but I'm mixing up the UI resources stuff and the App default stuff.  I'm
+ * using the (Activity) resources to determine the current theme and if it's
+ * not desired, changing it with the app-delegate set default.
+ * From the docs: "An Activity is an application component..."
+ */
+enum class DisplayTheme(val titleId: Int, val menuId: Int, val displayMode: Int) {
+    Dark(R.string.display_theme_dark, R.id.display_dark_theme, AppCompatDelegate.MODE_NIGHT_YES),
+    Light(R.string.display_theme_light, R.id.display_light_theme, AppCompatDelegate.MODE_NIGHT_NO),
+    Unspecified(R.string.display_theme_unspecified, -1, AppCompatDelegate.MODE_NIGHT_UNSPECIFIED)
+}
+// Set by the activity at its startup.
+fun appDisplayTheme(): String =
+    when (AppCompatDelegate.getDefaultNightMode()) {
+        AppCompatDelegate.MODE_NIGHT_YES -> "MODE_NIGHT_YES"
+        AppCompatDelegate.MODE_NIGHT_NO -> "MODE_NIGHT_NO"
+        AppCompatDelegate.MODE_NIGHT_UNSPECIFIED -> "MODE_NIGHT_UNSPECIFIED"
+        else -> "Other"
+    }
+@Suppress("ObjectPropertyName")
+private var _currentDisplayTheme = DisplayTheme.valueOf(
+    userPreferences.getString("currentDisplayTheme", DisplayTheme.Dark.name)!!
+)
+val currentDisplayTheme: DisplayTheme
+    get() = _currentDisplayTheme
+fun selectDisplayTheme(theme: DisplayTheme) {
+    if (theme != currentDisplayTheme) {
+        AppCompatDelegate.setDefaultNightMode(theme.displayMode)
+        _currentDisplayTheme = theme
+        userPreferences.edit().putString("currentDisplayTheme", theme.name).apply()
+    }
+    else {
+        Log.d(TAG, "selectDisplayTheme: theme is already $theme " +
+                "appCompatMode = ${appDisplayTheme()}")
+    }
+}
+val uiThemeIsDark: Boolean
+    get() = currentDisplayTheme == DisplayTheme.Dark
+
+
+
 class MainActivity : AppCompatActivity() {
     companion object {
         private var scrollState: Parcelable? = null
     }
+
+
     private lateinit var selectorGrid: GridView
 
     class ViewHolder (

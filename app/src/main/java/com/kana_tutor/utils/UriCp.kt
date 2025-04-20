@@ -1,4 +1,4 @@
-package com.kana_tutor.get_put_zip_demo.utils
+package com.kana_tutor.utils
 
 import android.content.Context
 import android.net.Uri

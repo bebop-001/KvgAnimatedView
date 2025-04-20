@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package com.kana_tutor.utils
 
 import android.app.Activity
@@ -9,9 +7,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.util.Log
 import android.widget.Toast
-import com.kana_tutor.get_put_zip_demo.utils.uriToFileName
-import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
-import com.kana_tutor.kvgviewer.KvgViewer.Companion.appFilesDir
+import com.kana_tutor.kvgviewer.KvgViewer
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import java.io.*
 import java.net.URLDecoder
@@ -21,7 +17,7 @@ import java.util.zip.ZipOutputStream
 
 
 @Suppress("unused")
-private const val TAG = "ZipUtils"
+private const val TAG = "ZipFileUtils"
 
 private const val BUFFER_SIZE = 0x1000
 data class ZipInfo (
@@ -46,9 +42,12 @@ fun zipToc (zipFile: File): List<ZipInfo> {
         zipStream.close()
         Log.d(TAG, "zipToc end: ${rv.size}")
     }
+    else {
+        Log.d(TAG, "zipToc: $zipFile: No such file.")
+    }
     return rv
 }
-fun getZipEntryValue (zipFile: File, info: ZipInfo): String? {
+fun getZipEntry (zipFile: File, info: ZipInfo): String? {
     var rv: String? = null
     if (zipFile.exists()) {
         var i = 0
@@ -87,14 +86,14 @@ fun unzipFile(
     val exDirs = extractDirs?.map {
         it.replace("""/*$""".toRegex(), "/")
     }
-    val baseDir = File(appFilesDir, baseDirName)
+    val baseDir = File(KvgViewer.appFilesDir, baseDirName)
     val buffer = ByteArray(BUFFER_SIZE)
     var unzippedBytes = 0L
     try {
         val zipStream = ZipInputStream(BufferedInputStream(inStream))
         var ze: ZipEntry? = zipStream.nextEntry
         if (ze == null) {
-            Toast.makeText(appContext,
+            Toast.makeText(KvgViewer.appContext,
                 "unzipFile: Input doesn't appear to be a zip file.",
                 Toast.LENGTH_LONG).show()
             return 0L
@@ -256,6 +255,7 @@ fun Context.createZipFile(
     }
     return unzippedBytes
 }
+val getZipRequest = ObservedPair(Pair("", ""))
 fun Activity.getZipFromRemote(uri: Uri) {
     val inputStream: InputStream = contentResolver.openInputStream(uri)!!
     val fileBaseName = uriToFileName(uri).baseName()
@@ -263,9 +263,13 @@ fun Activity.getZipFromRemote(uri: Uri) {
     fun doCp() {
         val outStream = FileOutputStream(outFile)
         cp(inputStream, outStream)
-        Toast.makeText(this,
-            "$fileBaseName: ${"%,d".format(outFile.length())} bytes",
-            Toast.LENGTH_LONG).show()
+        val mess = "$outFile: ${"%,d".format(outFile.length())} bytes"
+
+        Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
+        Log.d(TAG, mess)
+        // Notify zip fetch complete.
+        getZipRequest.value = Pair(
+            getZipRequest.value_ro.first, outFile.toString())
     }
     if (!outFile.exists()) doCp()
     else yesNo("Overwrite $fileBaseName") {y ->

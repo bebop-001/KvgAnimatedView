@@ -1,5 +1,4 @@
 @file:Suppress("SpellCheckingInspection")
-
 package com.kana_tutor.utils
 
 import android.os.Looper
@@ -44,8 +43,7 @@ class Observed<T>(
         }
         catch (e: Exception) {
             if (traceName.isNotEmpty())
-                Log.d(
-                    TAG, "$traceName:$observedId: " +
+                Log.d(TAG, "$traceName:$observedId: " +
                         "invoke failed:" + e.toString())
             rv = false
         }
@@ -62,8 +60,7 @@ class Observed<T>(
     }
     private fun invoke() {
         if (traceName.isNotEmpty())
-            Log.d(
-                TAG,
+            Log.d(TAG,
             "$traceName:$observedId: " +
                 "invoke: ${observers.size} observers"
             )
@@ -235,6 +232,7 @@ class ObservedPair <A,B> (
     var value:Pair<A,B>
         get() = observed.value
         set(newVal) { observed.value = newVal }
+    @Suppress("PropertyName")
     val value_ro:Pair<A,B>
         get() = observed.value_ro
 }

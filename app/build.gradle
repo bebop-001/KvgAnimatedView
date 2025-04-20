@@ -5,20 +5,36 @@ plugins {
 }
 
 android {
-    compileSdkVersion 34
-    
-    buildFeatures {
-        buildConfig = true
-    }
+    namespace "com.kana_tutor.kvgviewer"
+    compileSdk 34
 
     defaultConfig {
-        namespace "com.kana_tutor.kvgviewer"
-        minSdkVersion 21
-        targetSdkVersion 34
+        applicationId "com.kana_tutor.kvgviewer"
+        minSdk 23
+        // suppress warning "not latest api".
+        // Upgrading to subsequent api while avoiding compose
+        // and retaining support for Android 6 presents
+        // significant difficulties.
+        //noinspection OldTargetApi
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                // use git to get the current branch identifier.
+        def branchName = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+        def commitDate = "utils/gitCommitDate.pl".execute().text.trim()
+        def buildId = "git rev-parse  HEAD".execute().text.trim()
+
+        buildConfigField 'long', 'BUILD_TIMESTAMP',
+                String.format("0x%08xL", System.currentTimeMillis())
+        buildConfigField "String", "BRANCH_NAME", "\"$branchName\""
+        buildConfigField "String", "BUILD_ID", "\"$buildId\""
+        buildConfigField "String", "COMMIT_DATE", "\"$commitDate\""
+
+    }
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -48,5 +64,4 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
 
     implementation 'com.google.android.material:material:1.12.0'
-
 }

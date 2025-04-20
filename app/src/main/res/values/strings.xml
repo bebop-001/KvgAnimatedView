@@ -16,6 +16,26 @@
 <resources>
     <string name="app_name">KvgViewer</string>
 
+    <!-- used by BuildInfo. -->
+    <string name="build_info">Build Info…</string>
+    <string name="build_info_query">
+        Application name: %1$s\n
+        Application ID:\n\t %2$s\n
+        Version(%3$d, %4$s)\n
+        Branch:       %5$s\n
+        Commit date:  %6$s\n
+        Build date:   %7$s\n
+        Install date: %8$s\n
+        Build type:   %9$s
+    </string>
+
+    <string name="display_theme">
+        <![CDATA[Display mode: <b><font color=#00FF00>]]>%1$s
+        <![CDATA[</font></b>]]></string>
+    <string name="display_theme_dark">Dark</string>
+    <string name="display_theme_light">Light</string>
+    <string name="display_theme_unspecified">Unspecified</string>
+
     <!-- Strings for setting animation render rate -->
     <string name="show_speed_hint">Long-press on animation image to show speed selection.</string>
     <string name="slow">Animate Slow</string>
