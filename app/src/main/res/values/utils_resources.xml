@@ -1,0 +1,8 @@
+<!-- Various resources used by utils package. -->
+<resources>
+    <string name="to_clipboard">Copied to clipboard: %1$s</string>
+    <string name="done">Done</string>
+    <string name="yes_str">Yes</string>
+    <string name="no_str">No</string>
+    <string name="op_canceled">Canceled…</string>
+</resources>

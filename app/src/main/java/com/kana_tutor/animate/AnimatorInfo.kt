@@ -1,10 +1,12 @@
 package com.kana_tutor.animate
 
+import android.os.FileUtils
 import android.util.Log
 import android.widget.Toast
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
+import com.kana_tutor.utils.getFileText
 import java.io.File
 import java.nio.charset.Charset
 
@@ -71,30 +73,6 @@ class AnimatorInfo {
                 initResults.value = Pair(true, "$TAG: loaded $avgTocName")
             }
         }
-
-        // check assets and local memory for a file.
-        private fun getFileText(fileName: String): String? {
-            var bytes: ByteArray?
-            try {
-                if (File(externalStorageRoot, fileName).exists()) {
-                    bytes = File(externalStorageRoot, fileName).readBytes()
-                } else if (File(externalStorageRoot, "$fileName.gz").exists()) {
-                    bytes = File(externalStorageRoot, "$fileName.gz").readBytes()
-                } else {
-                    // NOTE! Android takes zipped files in assets and unzips
-                    // and removes zip/gzip extension.
-                    val reader = appContext.assets.open(fileName)
-                    bytes = reader.readBytes()
-                    reader.close()
-                }
-            }
-            catch (e: Exception) {
-                val reader = appContext.assets.open("$fileName.gz")
-                bytes = reader.readBytes()
-                reader.close()
-            }
-            return bytes?.toString(Charset.defaultCharset())
-        }
         fun getPathInfo(renderChar: Char): String? {
             var pathInfo: String?
             var charsFile = ""
@@ -103,7 +81,7 @@ class AnimatorInfo {
                     renderChar in it
                 }
                 charsFile = charRangeToFname[charRange]!!
-                pathInfo = getFileText(charsFile)
+                pathInfo = com.kana_tutor.utils.getFileText(charsFile)
             }
             catch (e: Exception) {
                 Log.d (TAG, "Failed to open $charsFile for $renderChar: ${e.message}")
