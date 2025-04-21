@@ -1,5 +1,6 @@
 package com.kana_tutor.animate
 
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
@@ -7,6 +8,9 @@ import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
 import com.kana_tutor.utils.baseName
 import java.io.File
+import java.nio.charset.Charset
+import java.util.zip.ZipFile
+
 
 private const val TAG = "AnimatorInfo"
 class AnimatorInfo {
@@ -26,29 +30,48 @@ class AnimatorInfo {
         val supportedStyles: Set<String> = styles
         private val aniFiles = mutableSetOf<String>()
         val animatorFiles: Set<String> = aniFiles
-        private var zipFile: File? = null
-        val zipFileName: String?
-            get() {
-                if(zipFile == null || !zipFile!!.exists())
-                    return null
-                return zipFile!!.baseName()
-            }
+        private var zf: ZipFile? = null
+        val zipFile: ZipFile?
+            get() = zf
+        private val tocf: File? = null
+        val tocFile: File
+            get() = tocf!!
+
 
         fun initialize() {
-            if (zipFileName != null) {
+            if (zipFile != null) {
                 initResults.value = true to "success"
             }
+            // Make sure we have one and only one zip file.
             val names= externalStorageRoot.list()
-                .filter { it.contains("""^kvgPaths(-\d+).zip$""".toRegex()) }
-            if (names.size == 0) {
+                ?.filter { it.contains("""^kvgPaths(-\d+).zip$""".toRegex()) }
+            if (names == null || names.size == 0) {
                 initResults.value = false to "no \"kvgPaths-NNN.avg\" found"
             }
             else if (names.size > 1) {
-                initResults.value = false to "Multipe evg path files found: $names"
+                initResults.value = false to "Multiple evg path files found: $names"
             }
             else {
-                zipFile = File(externalStorageRoot, names[0])
-                initResults.value = true to "success: Found $zipFileName"
+                // found a valid zip file.
+                val zff = File(externalStorageRoot, names[0])
+                zf = if (Build.VERSION.SDK_INT >= 24) {
+                    ZipFile(zff, Charset.forName("UTF-8"))
+                }
+                else {
+                    ZipFile(zff)
+                }
+
+                val tocEntryName = "paths/avg.toc.txt"
+                val tocf = File(externalStorageRoot, tocEntryName.baseName()!!)
+                if (!tocFile.exists()) {
+                    tocFile.writeBytes(
+                        zipFile!!.getInputStream(
+                            zipFile!!.getEntry(tocEntryName)
+                        ).readBytes()
+                    )
+                }
+
+                initResults.value = true to "success: Found $zipFile"
                 val fileInfoRegex =
                     """(\S+(.)-(.)\S+)\s*=\s*(.*)$""".toRegex()
                 val fNameRegex = """^((.)-*([^.]+)*.avg)$""".toRegex()
