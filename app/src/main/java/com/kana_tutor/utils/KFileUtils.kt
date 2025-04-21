@@ -20,29 +20,6 @@ private const val TAG = "KFileUtils"
 
 class FileUtilsException(mess: String) : RuntimeException(mess)
 
-// check assets and local memory for a file.
-fun getFileText(fileName: String): String? {
-    var bytes: ByteArray?
-    try {
-        if (File(KvgViewer.externalStorageRoot, fileName).exists()) {
-            bytes = File(KvgViewer.externalStorageRoot, fileName).readBytes()
-        } else if (File(KvgViewer.externalStorageRoot, "$fileName.gz").exists()) {
-            bytes = File(KvgViewer.externalStorageRoot, "$fileName.gz").readBytes()
-        } else {
-            // NOTE! Android takes zipped files in assets and unzips
-            // and removes zip/gzip extension.
-            val reader = KvgViewer.appContext.assets.open(fileName)
-            bytes = reader.readBytes()
-            reader.close()
-        }
-    }
-    catch (e: Exception) {
-        val reader = KvgViewer.appContext.assets.open("$fileName.gz")
-        bytes = reader.readBytes()
-        reader.close()
-    }
-    return bytes?.toString(Charset.defaultCharset())
-}
 private const val BUFFER_SIZE = 0x1000
 fun cp(inStream: InputStream, outStream: OutputStream) : Long {
     var totalBytes = 0L

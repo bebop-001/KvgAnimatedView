@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.kana_tutor.utils
 
 import android.content.Context

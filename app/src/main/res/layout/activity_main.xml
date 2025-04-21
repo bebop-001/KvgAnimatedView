@@ -21,6 +21,22 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <Button
+        android:id="@+id/downloae_prompt_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:textAllCaps="false"
+        android:text="Press when kvg paths file is loaded"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5" />
+
     <GridView
         android:id="@+id/animate_select_grid"
         android:layout_width="0dp"
@@ -30,8 +46,8 @@
         android:background="@drawable/border_bg"
         android:horizontalSpacing="10dp"
         android:numColumns="auto_fit"
-        android:verticalSpacing="10dp"
         android:padding="6dp"
+        android:verticalSpacing="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

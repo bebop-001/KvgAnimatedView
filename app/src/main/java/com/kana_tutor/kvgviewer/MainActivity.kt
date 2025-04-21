@@ -19,8 +19,11 @@ package com.kana_tutor.kvgviewer
 import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
+import android.text.Spanned
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.View.OnClickListener
 import android.view.ViewGroup
@@ -28,13 +31,29 @@ import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.GridView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.net.toUri
+import androidx.core.text.HtmlCompat
+import androidx.core.text.toSpanned
 import com.kana_tutor.animate.Animator
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
+import com.kana_tutor.utils.baseName
+import com.kana_tutor.utils.cpErrorMap
+import com.kana_tutor.utils.displayBuildInfo
+import com.kana_tutor.utils.getMenuItem
+import com.kana_tutor.utils.getUnzipFromRemote
+import com.kana_tutor.utils.getZipFromRemote
+import com.kana_tutor.utils.getZipRequest
+import com.kana_tutor.utils.uriCp
+import com.kana_tutor.utils.uriCpIoError
+import com.kana_tutor.utils.uriToFileName
+import com.kana_tutor.utils.zipToRemote
+import java.io.File
 
 
 private const val TAG = "MainActivity"
@@ -88,6 +107,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private lateinit var selectorGrid: GridView
+    private lateinit var downloaePromptBtn : Button
 
     class ViewHolder (
         var position: Int,
@@ -137,6 +157,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         selectorGrid = findViewById(R.id.animate_select_grid)
+        downloaePromptBtn = findViewById(R.id.downloae_prompt_btn)
+        downloaePromptBtn.setOnClickListener {
+            AnimatorInfo.initialize() }
+
+        val gridAdapter = GridAdapter()
         AnimatorInfo.initResults.observe { val (success, mess) = it
                 Toast.makeText(this,
                 "AnimatorInfo init results:" +
@@ -144,10 +169,16 @@ class MainActivity : AppCompatActivity() {
                     "\n$mess",
                     Toast.LENGTH_LONG
                 ).show()
+            if (success) {
+                gridAdapter.update(AnimatorInfo.animatorFiles)
+                downloaePromptBtn.visibility = View.GONE
+            }
+            else
+                downloaePromptBtn.visibility = View.VISIBLE
         }
-        val gridAdapter = GridAdapter()
-        selectorGrid.adapter = gridAdapter
+        AnimatorInfo.initialize()
         gridAdapter.update(AnimatorInfo.animatorFiles)
+        selectorGrid.adapter = gridAdapter
 
     }
     override fun onPause() {
@@ -186,4 +217,136 @@ class MainActivity : AppCompatActivity() {
             .find(animateName)!!.groupValues.takeLast(2)
         startAnimator(char[0], style)
     }
+
+    //=================================
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        super.onPrepareOptionsMenu(menu)
+        fun displayModeTitle(groupId: Int, itemResId: Int): Spanned =
+            HtmlCompat.fromHtml(
+                getString(groupId, getString(itemResId)),
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            ).toSpanned()
+        menu.getMenuItem(currentDisplayTheme.menuId)!!.isChecked = true
+        menu.getMenuItem(R.id.select_display_theme)!!.title =
+            displayModeTitle(R.string.display_theme, currentDisplayTheme.titleId)
+        return true
+    }
+    // the ActivityResultContracts "contract"
+    private val getAndUnzipFromRemote = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            getUnzipFromRemote(uri)
+        }
+    }
+    // the ActivityResultContracts "contract"
+    private val getZipFromRemote = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            getZipFromRemote(uri)
+        }
+    }
+    private val putZipToRemote = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            try {
+                zipToRemote(uri)
+            }
+            catch (e: Exception) {
+                Log.d(TAG, "Exception in zipToRemote: $e")
+            }
+        }
+    }
+    private val getTxtFromRemote = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uriIn ->
+        val externFile = File(uriToFileName(uriIn!!))
+        val uriOut = externFile.toUri()
+        val bytesRead = uriCp(uriIn, uriOut)
+        val mess = if (bytesRead < 0)
+            "${cpErrorMap[bytesRead]}${uriCpIoError}"
+        else
+            "Copied $bytesRead bytes from ${
+                uriIn.baseName()
+            } to ${uriOut.baseName()}"
+        Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
+    }
+    private val putTxtToRemote = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uriOut ->
+        if (uriOut != null) {
+            val externFile = uriToFileName(uriOut)
+            val uriIn = externFile.toUri()
+            val bytesRead = uriCp(uriIn, uriOut)
+            val mess = if (bytesRead < 0)
+                "${cpErrorMap[bytesRead]}${uriCpIoError}"
+            else
+                "Copied $bytesRead bytes from ${uriIn.baseName()
+                } to ${uriOut.baseName()}"
+            Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun importExport(menuItem: MenuItem):Boolean {
+        with (menuItem) {
+            Log.d(
+                TAG, "menuItem:0x%08x:\"%s\"".format(
+                    itemId, title
+                ))
+            when (itemId) {
+                R.id.import_and_unzip ->
+                    getAndUnzipFromRemote.launch(arrayOf("application/zip"))
+                R.id.export_zip -> {
+                    Log.d(TAG, "Export Zip")
+                    putZipToRemote.launch("File.zip")
+                }
+                R.id.import_zip -> {
+                    Log.d(TAG, "Import Zip: request = \"${getZipRequest.value.first}\"")
+                    getZipFromRemote.launch(arrayOf("application/zip"))
+                }
+                R.id.import_file ->
+                    getTxtFromRemote.launch(arrayOf("text/plain"))
+                R.id.export_file ->
+                    putTxtToRemote.launch("File.txt")
+            }
+        }
+        return true
+    }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        return when (item.itemId) {
+            R.id.export_file, R.id.import_file,
+            R.id.zip_and_export, R.id.import_and_unzip,
+            R.id.export_zip, R.id.import_zip ->
+                    importExport(item)
+            R.id.build_info_item -> return displayBuildInfo()
+            R.id.display_dark_theme  -> {
+                selectDisplayTheme(DisplayTheme.Dark)
+                true
+            }
+            R.id.display_light_theme -> {
+                selectDisplayTheme(DisplayTheme.Light)
+                true
+            }
+            else -> {
+                Log.d(TAG, "Unexpected menuItem:" +
+                        "0x%08x:\"%s\"".format(
+                            item.itemId, item.title
+                        ))
+                super.onOptionsItemSelected(item)
+            }
+        }
+    }
+
+    //=================================
 }
