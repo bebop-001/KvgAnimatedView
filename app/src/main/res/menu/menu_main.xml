@@ -47,9 +47,13 @@
                         </group>
                     </menu>
                 </item>
+                <item
+                        android:id="@+id/update_ani_zip"
+                        android:title="@string/update_animation_zip"/>
             </group>
         </menu>
-    </item>    <item
+    </item>
+    <item
     android:id="@+id/select_display_theme"
     android:orderInCategory="4"
     android:title=""

@@ -135,15 +135,15 @@ my $widthRegex = qr {
 # placement.
 my $textRegex = qr{^\s*<text.*matrix\(([^>]+\D+\d+)};
 my @failed;
-sub Get {
+sub ParseSvgFile {
+    my $svgFile = shift @_;
     my @curXY;
     my @pathInfo;
-    my $file = $_[0];
-    open(F, $file) || die "Failed to open $file for read:$!\\n";
+    open(F, $svgFile) || die "Failed to open $svgFile for read:$!\\n";
     my ($width, @paths, @annotations, $fName, $renderedChar);
     my $lineNumber = 0;
-    $fName = basename $file;
-    $renderedChar = toChar($file);
+    $fName = basename $svgFile;
+    $renderedChar = toChar($svgFile);
     my $renderFile = ($fName =~ m{(-[^.]+).svg$})
         ? "$renderedChar$1.avg"
         : "$renderedChar.avg";
@@ -186,22 +186,11 @@ sub Get {
         push @pathInfo, $paths[$i] if(defined $paths[$i]);
         push @pathInfo, $annotations[$i] if(defined $annotations[$i]);
     }
-    return @pathInfo;
-}
-sub getAvgInfo {
-    my $svgFile = shift @_;
-    my $rv = "";
-    if (-f $svgFile) {
-        my ($ord, $other) = $svgFile =~ m{/([0-9a-fA-f]{5})([^.]+)*.svg$};
-        my $renderedChar = chr(hex($ord));
-        my @paths = Get($svgFile);
-        if (grep !defined $_, @paths) {
-            push @failed, "$svgFile: undef.";
-            print "* ";
-        }
-        $rv = join "\n", @paths, '';
+    if (grep !defined $_, @pathInfo) {
+        push @failed, "$svgFile: undef.";
+        print "* ";
     }
-    return $rv;
+    return $renderFile, @pathInfo;
 }
 
 my @kana = qw (
@@ -228,12 +217,13 @@ my @kana = qw (
 );
 my (@missing, @SvgFiles);
 my $licenseFile = "$pathFileDir/License.txt";
+print "unlinked ", unlink(<paths/*>), " previous paths files.\n";
 open (OUT, "> $licenseFile")
     || die "open $licenseFile for output FAILED:$!\n";
 binmode(OUT, ':utf8');
 print OUT $HEADER;
 close OUT;
-sub getAvgFileName {
+sub getRangeFileName {
     my @paths = @_;
     my %x = ();
     # get a sorted uniq list of characters
@@ -250,23 +240,32 @@ sub getAvgFileName {
             ? "paths/$chars[0]-$chars[-1].avg"
             : "paths/$chars[0].avg";
 }
+
+my %fileInfo = ();
 sub putPaths {
-    my @paths = @_;
-    my $avgFile = getAvgFileName(@paths);
+    my %fileInfo = %{$_[0]};
+    my @paths = @{$_[1]};
+    my $rangeFileName = getRangeFileName(@paths);
     my $pathInfo = join('', @paths);
-    open (OUT2, "> $avgFile")
-        || die "open $avgFile for output FAILED:$!\n";
+    open (OUT2, "> $rangeFileName")
+        || die "open $rangeFileName for output FAILED:$!\n";
     binmode(OUT2, ':utf8');
     print OUT2 $pathInfo;
     close OUT2;
     my @files = map {m{^.(.*)}; $1}
         grep (m{^N},
             split("\n", join('', @paths)));
-    print TOC join(" ", $avgFile, "=", @files), "\n";
+        @files = map {
+            my %fi = %{$fileInfo{$_}};
+            $_ = sprintf("%s%03x%02x", $_, $fi{index}, $fi{length});
+            $_
+        } @files;
+    my $out = join(" ", $rangeFileName, "=", @files, "");
+    print TOC $out;
 
     if ($GZIP) {
-        unlink("$avgFile.gz");
-        system ('/usr/bin/gzip', $avgFile);
+        unlink("$rangeFileName.gz");
+        system ('/usr/bin/gzip', $rangeFileName);
     }
 }
 my @paths = ();
@@ -281,18 +280,25 @@ if (defined $KVG_VERSION) {
     print TOC "kvgVersion = $KVG_VERSION\n";
 }
 
+# units = file lines.
+my %avgIndexInfo = ();
+my $recordTotalOffset = 0;
 for my $key (@keysSorted) {
     for my $svgFile (@{$svgFilesByChar{$key}}) {
-        push @paths, getAvgInfo($svgFile);
+        my ($renderFile, @renderPaths) = ParseSvgFile($svgFile);
+        $avgIndexInfo{$renderFile} =
+            {length => scalar @renderPaths, index => $recordTotalOffset};
+        $recordTotalOffset += @renderPaths + 1;
+        push @paths, join("\n", @renderPaths);
     }
     if (@paths > $N_CHARS) {
-        putPaths(@paths);
+        putPaths(\%avgIndexInfo, \@paths);
         @paths = ();
     }
 }
 close TOC;
 if (@paths > 0) {
-    putPaths(@paths);
+    putPaths(\%avgIndexInfo, \@paths);
     @paths = ();
 }
 if (@failed) {

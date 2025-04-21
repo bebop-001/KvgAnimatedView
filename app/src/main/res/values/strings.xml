@@ -41,5 +41,6 @@
     <string name="slow">Animate Slow</string>
     <string name="normal">Animate Normal</string>
     <string name="fast">Animate Fast</string>
+    <string name="update_animation_zip">Replace/Update animations file</string>
 
 </resources>

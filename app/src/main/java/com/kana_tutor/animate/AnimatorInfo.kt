@@ -34,10 +34,11 @@ class AnimatorInfo {
         val zipFile: ZipFile?
             get() = zf
         private val tocf: File? = null
-        val tocFile: File
-            get() = tocf!!
+        val tocFile: File?
+            get() = tocf
 
 
+        @Suppress("SpellCheckingInspection")
         fun initialize() {
             if (zipFile != null) {
                 initResults.value = true to "success"
@@ -45,7 +46,7 @@ class AnimatorInfo {
             // Make sure we have one and only one zip file.
             val names= externalStorageRoot.list()
                 ?.filter { it.contains("""^kvgPaths(-\d+).zip$""".toRegex()) }
-            if (names == null || names.size == 0) {
+            if (names.isNullOrEmpty()) {
                 initResults.value = false to "no \"kvgPaths-NNN.avg\" found"
             }
             else if (names.size > 1) {
@@ -62,15 +63,11 @@ class AnimatorInfo {
                 }
 
                 val tocEntryName = "paths/avg.toc.txt"
-                val tocf = File(externalStorageRoot, tocEntryName.baseName()!!)
-                if (!tocFile.exists()) {
-                    tocFile.writeBytes(
-                        zipFile!!.getInputStream(
-                            zipFile!!.getEntry(tocEntryName)
-                        ).readBytes()
-                    )
-                }
-
+                File(externalStorageRoot, tocEntryName.baseName()).writeBytes(
+                    zipFile!!.getInputStream(
+                        zipFile!!.getEntry(tocEntryName)
+                    ).readBytes()
+                )
                 initResults.value = true to "success: Found $zipFile"
                 val fileInfoRegex =
                     """(\S+(.)-(.)\S+)\s*=\s*(.*)$""".toRegex()

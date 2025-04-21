@@ -41,6 +41,7 @@ import com.kana_tutor.animate.Animator
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
 import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.baseName
 import com.kana_tutor.utils.cpErrorMap
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private lateinit var selectorGrid: GridView
-    private lateinit var downloaePromptBtn : Button
+    private lateinit var downloadPromptBtn : Button
 
     class ViewHolder (
         var position: Int,
@@ -157,8 +158,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         selectorGrid = findViewById(R.id.animate_select_grid)
-        downloaePromptBtn = findViewById(R.id.downloae_prompt_btn)
-        downloaePromptBtn.setOnClickListener {
+        downloadPromptBtn = findViewById(R.id.downloae_prompt_btn)
+        downloadPromptBtn.setOnClickListener {
             AnimatorInfo.initialize() }
 
         val gridAdapter = GridAdapter()
@@ -171,10 +172,10 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             if (success) {
                 gridAdapter.update(AnimatorInfo.animatorFiles)
-                downloaePromptBtn.visibility = View.GONE
+                downloadPromptBtn.visibility = View.GONE
             }
             else
-                downloaePromptBtn.visibility = View.VISIBLE
+                downloadPromptBtn.visibility = View.VISIBLE
         }
         AnimatorInfo.initialize()
         gridAdapter.update(AnimatorInfo.animatorFiles)
@@ -265,6 +266,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private fun updateAnimationsFiles() :Boolean{
+        val currentAniFiles = externalStorageRoot.list()!!.filter{
+            it.contains("""^kvg.*\.(toc|zip)$""".toRegex()) &&
+                    File(externalStorageRoot, it).isFile
+        }
+        currentAniFiles.map{
+            if (!File(externalStorageRoot, it).delete())
+                throw RuntimeException("updateAnimationsFiles: " +
+                        "Unable to delete($it)")
+        }
+        val updateId = "updateAnime"
+        getZipRequest.value = Pair(updateId, "")
+        getZipFromRemote.launch(arrayOf("application/zip"))
+        getZipRequest.observe { val (id, file) = it
+            if (id == updateId && file.isNotEmpty()) {
+                AnimatorInfo.initialize()
+            }
+        }
+        return true
+    }
     private val getTxtFromRemote = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uriIn ->
@@ -329,6 +350,7 @@ class MainActivity : AppCompatActivity() {
             R.id.zip_and_export, R.id.import_and_unzip,
             R.id.export_zip, R.id.import_zip ->
                     importExport(item)
+            R.id.update_ani_zip -> updateAnimationsFiles()
             R.id.build_info_item -> return displayBuildInfo()
             R.id.display_dark_theme  -> {
                 selectDisplayTheme(DisplayTheme.Dark)
