@@ -5,7 +5,6 @@ package com.kana_tutor.utils
 import android.app.Application
 import android.net.Uri
 import android.util.Log
-import com.kana_tutor.kvgviewer.KvgViewer
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.appFilesDir
 import java.io.BufferedReader
 import java.io.File
@@ -14,7 +13,6 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.URLDecoder
-import java.nio.charset.Charset
 
 private const val TAG = "KFileUtils"
 
