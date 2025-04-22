@@ -261,7 +261,7 @@ sub putPaths {
             $_
         } @files;
     my $out = join(" ", $rangeFileName, "=", @files, "");
-    print TOC $out;
+    print TOC $out, "\n";
 
     if ($GZIP) {
         unlink("$rangeFileName.gz");
