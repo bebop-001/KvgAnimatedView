@@ -32,9 +32,6 @@ class AnimatorInfo {
         private var zf: ZipFile? = null
         val zipFile: ZipFile?
             get() = zf
-        private val tocf: File? = null
-        val tocFile: File?
-            get() = tocf
 
         // Each record has info on a number of kanji.  the id
         // is the name of the record as found in a zip file and
@@ -47,7 +44,6 @@ class AnimatorInfo {
         )
         val recordsById = mutableMapOf<String, List<PathRecord>>()
 
-        @Suppress("SpellCheckingInspection")
         fun initialize() {
             if (zipFile != null) {
                 initResults.value = true to "success"
