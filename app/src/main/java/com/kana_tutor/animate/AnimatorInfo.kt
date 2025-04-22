@@ -6,7 +6,6 @@ import android.widget.Toast
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
-import com.kana_tutor.utils.baseName
 import java.io.File
 import java.nio.charset.Charset
 import java.util.zip.ZipFile
@@ -37,6 +36,16 @@ class AnimatorInfo {
         val tocFile: File?
             get() = tocf
 
+        // Each record has info on a number of kanji.  the id
+        // is the name of the record as found in a zip file and
+        // is the character-range of the kanji in tha record.
+        // The path of the record contains the id of the animated
+        // character as "kanji.style.avg", the offset into the
+        // zipped record and the length of the record.
+        data class PathRecord (
+            val id: String, val offset: Int, val length: Int
+        )
+        val recordsById = mutableMapOf<String, List<PathRecord>>()
 
         @Suppress("SpellCheckingInspection")
         fun initialize() {
@@ -63,15 +72,24 @@ class AnimatorInfo {
                 }
 
                 val tocEntryName = "paths/avg.toc.txt"
-                File(externalStorageRoot, tocEntryName.baseName()).writeBytes(
-                    zipFile!!.getInputStream(
-                        zipFile!!.getEntry(tocEntryName)
-                    ).readBytes()
-                )
+                val tocLines = zipFile!!.getInputStream(
+                    zipFile!!.getEntry(tocEntryName)
+                ).readBytes()
+                .toString(Charset.forName("UTF-8"))
+                    .split("""\s*\n\s*""".toRegex())
+                    .toList()
+                val fileRecordRegex = """(\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
+                recordsById.clear()
+                for(line in tocLines) {
+                    val id = line.split("""\s*=\s*""".toRegex()).first()
+                    val fileRecords = fileRecordRegex.findAll(line)
+                        .toList().map{
+                            val (r, a, b) = it.groupValues.takeLast(3)
+                            PathRecord(r, a.toInt(16), b.toInt(16))
+                        }
+                    recordsById[id] = fileRecords
+                }
                 initResults.value = true to "success: Found $zipFile"
-                val fileInfoRegex =
-                    """(\S+(.)-(.)\S+)\s*=\s*(.*)$""".toRegex()
-                val fNameRegex = """^((.)-*([^.]+)*.avg)$""".toRegex()
                 /*
                 if (avgToc != null) {
                     val toc = avgToc.split(("\n"))
