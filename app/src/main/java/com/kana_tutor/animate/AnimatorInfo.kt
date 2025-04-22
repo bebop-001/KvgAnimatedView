@@ -86,39 +86,6 @@ class AnimatorInfo {
                     recordsById[id] = fileRecords
                 }
                 initResults.value = true to "success: Found $zipFile"
-                /*
-                if (avgToc != null) {
-                    val toc = avgToc.split(("\n"))
-                    for (line in toc) {
-                        val matchResults = fileInfoRegex.find(line)
-                            ?.groupValues?.takeLast(4)?.toList()
-                        if (matchResults != null) {
-                            val (fName, a, b, fileString) = matchResults
-                            val max = a.first()
-                            val min = b.first()
-                            val range = max..min
-                            toFname[range] = fName
-                            val filesMap = filesInfo.getOrPut(range) {
-                                mutableMapOf()
-                            }
-                            val files = fileString.split("""\s+""".toRegex())
-                            aniFiles.addAll(files)
-                            files.map {
-                                val l = fNameRegex.find(it)
-                                    ?.groupValues?.takeLast(3)
-                                if (l != null) {
-                                    val (charFname, char, style) = l
-                                    filesMap.getOrPut(char[0]) { mutableListOf() }
-                                        .add(charFname)
-                                    styles.add(style)
-                                }
-                            }
-                            kanji.addAll(filesMap.keys)
-                        }
-                    }
-                    initResults.value = Pair(true, "$TAG: loaded $avgTocName")
-                }
-              */
             }
         }
         fun getPathInfo(renderChar: Char): String? {
