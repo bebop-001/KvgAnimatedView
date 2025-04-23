@@ -1,5 +1,6 @@
 package com.kana_tutor.animate
 
+import android.annotation.SuppressLint
 import android.os.Build
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
@@ -15,7 +16,7 @@ class AnimatorInfo {
         val initResults = ObservedPair(Pair(false, ""))
 
         private var zf: ZipFile? = null
-        val zipFile: ZipFile?
+        private val zipFile: ZipFile?
             get() = zf
 
         // Each record has info on a number of kanji.  the id
@@ -41,6 +42,7 @@ class AnimatorInfo {
                 .toString(Charset.forName("UTF-8"))
                 .split("\n")
             val (offset, len) = pathRecord.selectors
+            @SuppressLint("InlinedApi")
             val rv = recordLines.subList(offset, len + offset + 1)
                 .joinToString("\n")
             return rv
