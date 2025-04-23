@@ -337,7 +337,6 @@ class AnimatorView(context: Context, attrs: AttributeSet) :
         speedFactor = stepDistance[speedSelector]!!
         renderRate = maxRenderRate * speedFactor
         if (maxIdx > 6) maxIdx = 6
-        Log.d(TAG, "duration: $sleepTime:$maxIdx:$maxRenderRate:$speedFactor ->$renderRate")
     }
     private lateinit var kvgStrokeInfo: KvgStrokedChar.KvgStrokeInfo
     // convert stroke path info from the avg file into
