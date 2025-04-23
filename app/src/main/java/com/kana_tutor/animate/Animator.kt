@@ -40,8 +40,7 @@ const val ANIMATE_FAST = 2
 class Animator : Activity() {
     companion object {
         private var showSpeedToast = true
-        private var renderChar:Char = 'x'
-        private var renderStyle = ""
+        private var pathId: String = ""
     }
 
     private var animateSpeed = ANIMATE_NORMAL
@@ -52,8 +51,7 @@ class Animator : Activity() {
         setContentView(R.layout.animator_view)
         prefs = getSharedPreferences(getString(R.string.app_name), MODE_PRIVATE)
         animateSpeed = prefs.getInt("animateSpeed", ANIMATE_NORMAL)
-        if (prefs.getString("renderChar", null) != null)
-            renderChar = prefs.getString("renderChar", "x")!![0]
+        pathId = prefs.getString("pathId", "")!!
 
         // cause display properties to init.
         // DisplayProperties(this, R.id.animate_layout)
@@ -77,21 +75,18 @@ class Animator : Activity() {
         if (intent != null) {
             if (intent.getCharExtra("renderChar", 'x') != 'x') {
                 try {
-                    renderChar = intent.getCharExtra(
-                        "renderChar", 'x'
-                    )
+                    pathId = intent.getStringExtra("pathId")!!
                     prefs.edit()
-                        .putString("renderChar", renderChar.toString())
+                        .putString("pathId", pathId)
                         .apply()
-                    renderStyle = intent.getStringExtra("renderStyle") ?: ""
                     intent = null
                     val strokedChar: KvgStrokedChar?
-                    val pathInfo = AnimatorInfo.getPathInfo(renderChar)
-                    strokedChar = KvgStrokedChar(renderChar, renderStyle, pathInfo!!)
+                    val pathInfo = AnimatorInfo.getPathData(pathId)
+                    strokedChar = KvgStrokedChar(pathInfo)
                     animatorView.setStrokedChar(strokedChar)
                 }
                 catch (e: Exception){
-                    val mess = "Render failed for $renderChar: ${e.message}"
+                    val mess = "Render failed for $pathId: ${e.message}"
                     Log.d(TAG, mess)
                 }
             }

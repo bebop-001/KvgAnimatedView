@@ -16,19 +16,6 @@ class AnimatorInfo {
     companion object {
         val initResults = ObservedPair(Pair(false, ""))
 
-        // map char range -> { char -> file name}
-        private val filesInfo = mutableMapOf<CharRange,
-                MutableMap<Char, MutableList<String>>>()
-        private val toFname = mutableMapOf<CharRange, String>()
-        val charRangeToFname: Map<CharRange, String> = toFname
-        val charToFilesInfo: Map<CharRange, Map<Char, List<String>>> =
-            filesInfo
-        private val kanji = mutableSetOf<Char>()
-        val supportedKanji: Set<Char> = kanji
-        private val styles = mutableSetOf<String>()
-        val supportedStyles: Set<String> = styles
-        private val aniFiles = mutableSetOf<String>()
-        val animatorFiles: Set<String> = aniFiles
         private var zf: ZipFile? = null
         val zipFile: ZipFile?
             get() = zf
@@ -40,9 +27,26 @@ class AnimatorInfo {
         // character as "kanji.style.avg", the offset into the
         // zipped record and the length of the record.
         data class PathRecord (
-            val id: String, val offset: Int, val length: Int
-        )
-        val recordsById = mutableMapOf<String, List<PathRecord>>()
+            val pathId: String, val recordId: String,
+            val offset: Int, val length: Int
+        ) {
+            val selectors = listOf(offset, length)
+        }
+        // pathId is key.
+        val recordsById = mutableMapOf<String,PathRecord>()
+
+        fun getPathData(pathId: String): String {
+            val pathRecord = recordsById[pathId]!!
+            val zipEntry = zipFile!!.getEntry(pathRecord.recordId)
+            val recordLines = zipFile!!.getInputStream(zipEntry)
+                .readBytes()
+                .toString(Charset.forName("UTF-8"))
+                .split("\n")
+            val (offset, len) = pathRecord.selectors
+            val rv = recordLines.subList(offset, len + offset + 1)
+                .joinToString("\n")
+            return rv
+        }
 
         fun initialize() {
             if (zipFile != null) {
@@ -77,35 +81,18 @@ class AnimatorInfo {
                 val fileRecordRegex = """(\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
                 recordsById.clear()
                 for(line in tocLines) {
-                    val id = line.split("""\s*=\s*""".toRegex()).first()
-                    val fileRecords = fileRecordRegex.findAll(line)
+                    val recordId = line.split("""\s*=\s*""".toRegex()).first()
+                    fileRecordRegex.findAll(line)
                         .toList().map{
-                            val (r, a, b) = it.groupValues.takeLast(3)
-                            PathRecord(r, a.toInt(16), b.toInt(16))
+                            val (pathId, a, b) = it.groupValues.takeLast(3)
+                            recordsById[pathId] = PathRecord(
+                                pathId, recordId,
+                                a.toInt(16), b.toInt(16)
+                            )
                         }
-                    recordsById[id] = fileRecords
                 }
                 initResults.value = true to "success: Found $zipFile"
             }
-        }
-        fun getPathInfo(renderChar: Char): String? {
-            var pathInfo: String? = null
-            var charsFile = ""
-            try {
-                val charRange: CharRange = charToFilesInfo.keys.first {
-                    renderChar in it
-                }
-                charsFile = charRangeToFname[charRange]!!
-            }
-            catch (e: Exception) {
-                Log.d (TAG, "Failed to open $charsFile for $renderChar: ${e.message}")
-                Toast.makeText(
-                    appContext,
-                    "Failed to open $charsFile for $renderChar.",
-                    Toast.LENGTH_LONG).show()
-                pathInfo = ""
-            }
-            return pathInfo
         }
     }
 }

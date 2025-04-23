@@ -37,10 +37,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import androidx.core.text.toSpanned
-import com.kana_tutor.animate.Animator
 import com.kana_tutor.animate.AnimatorInfo
-import com.kana_tutor.animate.AnimatorInfo.Companion.supportedKanji
-import com.kana_tutor.animate.AnimatorInfo.Companion.supportedStyles
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.baseName
@@ -171,16 +168,15 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
             if (success) {
-                gridAdapter.update(AnimatorInfo.animatorFiles)
+                gridAdapter.update(AnimatorInfo.recordsById.keys)
                 downloadPromptBtn.visibility = View.GONE
             }
             else
                 downloadPromptBtn.visibility = View.VISIBLE
         }
         AnimatorInfo.initialize()
-        gridAdapter.update(AnimatorInfo.animatorFiles)
+        gridAdapter.update(AnimatorInfo.recordsById.keys)
         selectorGrid.adapter = gridAdapter
-
     }
     override fun onPause() {
         super.onPause()
@@ -195,28 +191,8 @@ class MainActivity : AppCompatActivity() {
             selectorGrid.onRestoreInstanceState(scrollState)
     }
 
-    private fun startAnimator(renderChar: Char, renderStyle: String) {
-        if (supportedKanji.contains(renderChar) &&
-            supportedStyles.contains(renderStyle)) {
-            val startAnimator = Intent(applicationContext, Animator::class.java)
-            startAnimator.putExtra("renderChar", renderChar)
-            startAnimator.putExtra("renderStyle", renderStyle)
-            startActivity(startAnimator)
-        }
-        else {
-            val mess = listOf (if (supportedKanji.contains(renderChar)) ""
-            else "$renderChar: Not supported character",
-                if (supportedStyles.contains(renderStyle)) ""
-                else "$renderStyle: Not supported style"
-            ).joinToString(", ")
-            Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
-            Log.d(TAG, "StartAnimate FAILED: $mess")
-        }
-    }
     private fun startAnimator(animateName:String) {
-        val (char, style) = """^(.)-*([^.]+)*.avg$""".toRegex(RegexOption.IGNORE_CASE)
-            .find(animateName)!!.groupValues.takeLast(2)
-        startAnimator(char[0], style)
+        val pathData = AnimatorInfo.getPathData(animateName)
     }
 
     //=================================

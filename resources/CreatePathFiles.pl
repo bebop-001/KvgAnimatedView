@@ -281,18 +281,19 @@ if (defined $KVG_VERSION) {
 }
 
 # units = file lines.
-my %avgIndexInfo = ();
 my $recordTotalOffset = 0;
+my %avgIndexInfo = ();
 for my $key (@keysSorted) {
     for my $svgFile (@{$svgFilesByChar{$key}}) {
         my ($renderFile, @renderPaths) = ParseSvgFile($svgFile);
         $avgIndexInfo{$renderFile} =
-            {length => scalar @renderPaths, index => $recordTotalOffset};
-        $recordTotalOffset += @renderPaths + 1;
-        push @paths, join("\n", @renderPaths);
+            {length => $#renderPaths, index => $recordTotalOffset};
+        $recordTotalOffset += scalar @renderPaths;
+        push @paths, join("\n", @renderPaths, '');
     }
     if (@paths > $N_CHARS) {
         putPaths(\%avgIndexInfo, \@paths);
+        $recordTotalOffset = 0;
         @paths = ();
     }
 }

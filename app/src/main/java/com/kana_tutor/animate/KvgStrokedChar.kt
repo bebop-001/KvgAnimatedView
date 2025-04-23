@@ -24,9 +24,7 @@ class SvgConvertException(message:String) : Exception (message)
 
 private const val TAG = "KvgStrokedChar"
 @Suppress("unused")
-class KvgStrokedChar (
-    animateChar:Char, animateStyle: String, pathInfo: String
-) {
+class KvgStrokedChar (pathRecord: String) {
     private var name = ""
     private var renderChar = ""
     private var renderStyle = ""
@@ -217,33 +215,12 @@ class KvgStrokedChar (
     val kvgStrokeInfo = KvgStrokeInfo()
 
     init {
-        val lineBuffer = pathInfo.split("\n").toMutableList()
-        fun List<String>.scanForStart(char: Char, style: String): Int? {
-            val regex = if(style.isEmpty()) """^\s*N$char.avg""".toRegex()
-                    else """^\s*N$char.$style.avg""".toRegex()
-            for (i in 0 until lastIndex) {
-                if (this[i].contains(regex))
-                    return i
-            }
-            return null
-        }
-        // filter the line buffer for the desired record.
-        val start =
-            lineBuffer.scanForStart(animateChar, animateStyle) ?:
-            lineBuffer.scanForStart(animateChar, "") ?:
-            throw RuntimeException("$TAG:no path found for " +
-                    "$animateChar:$animateStyle")
-        val end = (start..lineBuffer.lastIndex).firstOrNull {
-            it + 1 <= lineBuffer.lastIndex && lineBuffer[it + 1].startsWith("P")
-        } ?: lineBuffer.lastIndex
-        val pathRecord = lineBuffer.slice(start - 1..end)
-            .toMutableList()
-
+        val pathLines = pathRecord.split("\n").toMutableList()
         val opNoIdRegex = """(.)(.*)""".toRegex()
         val argToPathRegex ="""(^\d+)(.*)""".toRegex()
         val commasSplitRegex = """\s*,\s*""".toRegex()
         while (pathRecord.isNotEmpty()) {
-            val line = pathRecord.removeFirst()
+            val line = pathLines.removeFirst()
             val ops = opNoIdRegex.find(line)?.groupValues?.takeLast(2)
             if (ops == null) {
                 Log.e(TAG, "bad line:\"$line\" parsed to null.\n")
