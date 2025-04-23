@@ -125,7 +125,6 @@ class MainActivity : AppCompatActivity() {
         override fun getItemId(position: Int): Long = localList[position].hashCode().toLong()
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
             var button = convertView as Button?
-            Log.d(TAG, "getView:position:$position")
             if (button == null) {
                 val inflater = LayoutInflater.from(parent!!.context)
                 button = inflater.inflate(

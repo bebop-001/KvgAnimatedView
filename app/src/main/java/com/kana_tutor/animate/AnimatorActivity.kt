@@ -74,8 +74,8 @@ class AnimatorActivity : Activity() {
         val avgPathName: String? = intent?.getStringExtra("avgPathName")
         if (avgPathName != null) {
             intent = null
-            val pathInfo = AnimatorInfo.getPathData(avgPathName)
-            val strokedChar = KvgStrokedChar(pathInfo)
+            val pathData = AnimatorInfo.getPathData(avgPathName)
+            val strokedChar = KvgStrokedChar(pathData)
             animatorView.setStrokedChar(strokedChar)
         }
         // register for the speed-set context menu.

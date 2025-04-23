@@ -246,12 +246,12 @@ sub putPaths {
     my %fileInfo = %{$_[0]};
     my @paths = @{$_[1]};
     my $rangeFileName = getRangeFileName(@paths);
-    my $pathInfo = join('', @paths);
     open (OUT2, "> $rangeFileName")
         || die "open $rangeFileName for output FAILED:$!\n";
     binmode(OUT2, ':utf8');
-    print OUT2 $pathInfo;
+    print OUT2 join("\n", @paths);
     close OUT2;
+    # Append offset/length info to file names for TOC.
     my @files = map {m{^.(.*)}; $1}
         grep (m{^N},
             split("\n", join('', @paths)));
@@ -260,13 +260,13 @@ sub putPaths {
             $_ = sprintf("%s%03x%02x", $_, $fi{index}, $fi{length});
             $_
         } @files;
-    my $out = join(" ", $rangeFileName, "=", @files, "");
-    print TOC $out, "\n";
 
     if ($GZIP) {
         unlink("$rangeFileName.gz");
         system ('/usr/bin/gzip', $rangeFileName);
     }
+    # Return the TOC for this record.
+    return join(" ", $rangeFileName, "=", @files);
 }
 my @paths = ();
 my @keysSorted = sort{$a cmp $b} keys %svgFilesByChar;
@@ -274,8 +274,6 @@ open F, '> keysSorted.txt';
 binmode(F, ':utf8');
 print F join("\n", @keysSorted, '');
 close F;
-open TOC, '> paths/avg.toc.txt';
-binmode(TOC, ':utf8');
 if (defined $KVG_VERSION) {
     print TOC "kvgVersion = $KVG_VERSION\n";
 }
@@ -283,25 +281,38 @@ if (defined $KVG_VERSION) {
 # units = file lines.
 my $recordTotalOffset = 0;
 my %avgIndexInfo = ();
+my @toc = ();
 for my $key (@keysSorted) {
     for my $svgFile (@{$svgFilesByChar{$key}}) {
         my ($renderFile, @renderPaths) = ParseSvgFile($svgFile);
+        # svg allows spaces as separators.  In avg, no white space
+        # is allowed. operators cC and mM are considered as separators.
+        # Numbers use ',',  In the case of a negative number, the '-'
+        # is the seperator.
+        for (@renderPaths) {
+            s/\s+([a-zA-Z])\s+/$1/g;
+            s/\s+(\d+)/,$1/g;
+            s/\s+//g; }
         $avgIndexInfo{$renderFile} =
             {length => $#renderPaths, index => $recordTotalOffset};
         $recordTotalOffset += scalar @renderPaths;
-        push @paths, join("\n", @renderPaths, '');
+        push @paths, join("\n", @renderPaths);
     }
     if (@paths > $N_CHARS) {
-        putPaths(\%avgIndexInfo, \@paths);
+        push @toc, putPaths(\%avgIndexInfo, \@paths);
         $recordTotalOffset = 0;
         @paths = ();
     }
 }
-close TOC;
 if (@paths > 0) {
-    putPaths(\%avgIndexInfo, \@paths);
+    push @toc, putPaths(\%avgIndexInfo, \@paths);
     @paths = ();
 }
+open TOC, '> paths/avg.toc.txt';
+binmode(TOC, ':utf8');
+print TOC join "\n", @toc;
+close TOC;
+
 if (@failed) {
     @failed =  map {$_ =~ s{:[^:]+/}{}; $_ } @failed;
     print STDERR "Problems:\n\t", join("\n\t", @failed), "\n";

@@ -25,7 +25,10 @@ class SvgConvertException(message:String) : Exception (message)
 private const val TAG = "KvgStrokedChar"
 @Suppress("unused")
 class KvgStrokedChar (pathRecord: String) {
-    private var name = ""
+    private var sFile = ""
+    val svgFile:String get() = sFile
+    private var aFile = ""
+    val avgFile: String get() = aFile
     private var renderChar = ""
     private var renderStyle = ""
     // width/height
@@ -33,7 +36,9 @@ class KvgStrokedChar (pathRecord: String) {
         private set
     // A Kvg character is composed of strokes
     // and paths.
-    class KvgStrokePath(val op: String, val coord: Array<Float>) {
+    inner class KvgStrokePath(
+        val op: String, val coord: Array<Float>
+    ) {
         override fun toString(): String {
             return op + coord.joinToString(",")
         }
@@ -55,7 +60,7 @@ class KvgStrokedChar (pathRecord: String) {
     // stroke number to be accessed as an ordered
     // zero indexed list.
     @Suppress("MemberVisibilityCanBePrivate")
-    class KvgStrokeInfo {
+    inner class KvgStrokeInfo {
         private val info = mutableMapOf<Int, KvgStroke>()
         val size: Int
             get() = info.size
@@ -127,7 +132,7 @@ class KvgStrokedChar (pathRecord: String) {
         ): List<KvgCharPath> =
             range.mapNotNull { getKvgPath(it) }.toList()
     }
-    class KvgCharPath (strokeIn : String) {
+    inner class KvgCharPath (strokeIn : String) {
         val absSegments = mutableListOf<KvgStrokePath>()
         init {
             var absX = 0f; var absY = 0f
@@ -195,7 +200,8 @@ class KvgStrokedChar (pathRecord: String) {
                 .toList()
             if (segments.isEmpty()) {
                 throw SvgConvertException(
-                    "KvgCharPath: no segments found in \"$segments\"")
+                    "KvgCharPath: avgFile: $avgFile, " +
+                    "no segments found in \"$segments\"")
             }
             for (seg in segments) {
                 val (op, floatStr) = "\\s*([A-Za-z])\\s*([\\s\\d+.,-]+)".toRegex()
@@ -228,11 +234,12 @@ class KvgStrokedChar (pathRecord: String) {
             }
             val (op, arg) = opNoIdRegex.find(line)!!.destructured
             when (op) {
-                "P" -> { name = arg }
+                "P" -> { sFile = arg }
                 "N" -> {
                     val (c, s) = """(.)\.*([^.]+])*.avg""".toRegex()
                         .find(arg)!!.groupValues.takeLast(2)
                     renderChar = c; renderStyle = s
+                    aFile = arg
                 }
                 "W" -> {// dimensions
                     val (posX, posY) = arg
@@ -265,7 +272,7 @@ class KvgStrokedChar (pathRecord: String) {
                     "Found $pathsSize paths vs" +
                     " $annotationsSize annotations")
         return arrayOf(
-            "N$name",
+            "N$sFile",
             "C$renderChar",
             "W" + dimensions.toList().joinToString(","),
             "path count: $pathsSize",
