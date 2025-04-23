@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
                 val inflater = LayoutInflater.from(parent!!.context)
                 button = inflater.inflate(
                     R.layout.animate_select_button,
-                    null,
+                    parent,
                     false) as Button
                 button.setOnClickListener(OnClickListener { v ->
                     val b = v as Button
