@@ -37,6 +37,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import androidx.core.text.toSpanned
+import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
@@ -133,7 +134,9 @@ class MainActivity : AppCompatActivity() {
                     false) as Button
                 button.setOnClickListener(OnClickListener { v ->
                     val b = v as Button
-                    startAnimator(b.text.toString())
+                    // Text is the avg file name for the
+                    // kanji we want to animate.
+                    startAnimatorActivity(b.text.toString())
                 })
             }
             val itemText = getItem(position)
@@ -191,8 +194,10 @@ class MainActivity : AppCompatActivity() {
             selectorGrid.onRestoreInstanceState(scrollState)
     }
 
-    private fun startAnimator(animateName:String) {
-        val pathData = AnimatorInfo.getPathData(animateName)
+    private fun startAnimatorActivity(avgPathName: String) {
+        val animateIntent = Intent(applicationContext, AnimatorActivity::class.java)
+        animateIntent.putExtra("avgPathName", avgPathName)
+        startActivity(animateIntent)
     }
 
     //=================================

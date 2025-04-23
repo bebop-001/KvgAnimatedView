@@ -219,7 +219,7 @@ class KvgStrokedChar (pathRecord: String) {
         val opNoIdRegex = """(.)(.*)""".toRegex()
         val argToPathRegex ="""(^\d+)(.*)""".toRegex()
         val commasSplitRegex = """\s*,\s*""".toRegex()
-        while (pathRecord.isNotEmpty()) {
+        while (pathLines.isNotEmpty()) {
             val line = pathLines.removeFirst()
             val ops = opNoIdRegex.find(line)?.groupValues?.takeLast(2)
             if (ops == null) {

@@ -1,9 +1,6 @@
 package com.kana_tutor.animate
 
 import android.os.Build
-import android.util.Log
-import android.widget.Toast
-import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
 import java.io.File
@@ -11,6 +8,7 @@ import java.nio.charset.Charset
 import java.util.zip.ZipFile
 
 
+@Suppress("unused")
 private const val TAG = "AnimatorInfo"
 class AnimatorInfo {
     companion object {

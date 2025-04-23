@@ -19,7 +19,6 @@ package com.kana_tutor.animate
 import android.app.Activity
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
 import android.view.Gravity
@@ -30,14 +29,14 @@ import android.widget.Toast.LENGTH_SHORT
 import com.kana_tutor.kvgviewer.R
 
 @Suppress("unused")
-private const val TAG = "Animator"
+private const val TAG = "AnimatorActivity"
 
 const val ANIMATE_SLOW = 0
 const val ANIMATE_NORMAL = 1
 const val ANIMATE_FAST = 2
 
 // interface to the AnimatorView.
-class Animator : Activity() {
+class AnimatorActivity : Activity() {
     companion object {
         private var showSpeedToast = true
         private var pathId: String = ""
@@ -72,24 +71,12 @@ class Animator : Activity() {
         }
 
         // If we received an intent from the main app. set up for animation.
-        if (intent != null) {
-            if (intent.getCharExtra("renderChar", 'x') != 'x') {
-                try {
-                    pathId = intent.getStringExtra("pathId")!!
-                    prefs.edit()
-                        .putString("pathId", pathId)
-                        .apply()
-                    intent = null
-                    val strokedChar: KvgStrokedChar?
-                    val pathInfo = AnimatorInfo.getPathData(pathId)
-                    strokedChar = KvgStrokedChar(pathInfo)
-                    animatorView.setStrokedChar(strokedChar)
-                }
-                catch (e: Exception){
-                    val mess = "Render failed for $pathId: ${e.message}"
-                    Log.d(TAG, mess)
-                }
-            }
+        val avgPathName: String? = intent?.getStringExtra("avgPathName")
+        if (avgPathName != null) {
+            intent = null
+            val pathInfo = AnimatorInfo.getPathData(avgPathName)
+            val strokedChar = KvgStrokedChar(pathInfo)
+            animatorView.setStrokedChar(strokedChar)
         }
         // register for the speed-set context menu.
         registerForContextMenu(findViewById(R.id.animator_view))
@@ -131,7 +118,7 @@ class Animator : Activity() {
         // are registered, throwing away the one from the animator view
         // fixes my problem.
         if (v.id == R.id.animator_view) return
-        // Log.d("Animator", String.format("onCreateContextMenu: id = 0x%08x", v.id))
+        // Log.d("AnimatorActivity", String.format("onCreateContextMenu: id = 0x%08x", v.id))
         val inflater = menuInflater
         inflater.inflate(R.menu.kana_animator_menu, menu)
         menu.getItem(animateSpeed).isChecked = true
@@ -145,7 +132,7 @@ class Animator : Activity() {
             R.id.animate_normal -> setAnimateSpeed(ANIMATE_NORMAL)
             R.id.animate_fast -> setAnimateSpeed(ANIMATE_FAST)
             else -> {
-                // Log.d("Animator", String.format(
+                // Log.d("AnimatorActivity", String.format(
                 //        "menu item unhandled:0x%08x", itemId))
                 rv = false
             }
