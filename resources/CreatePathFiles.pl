@@ -274,14 +274,14 @@ open F, '> keysSorted.txt';
 binmode(F, ':utf8');
 print F join("\n", @keysSorted, '');
 close F;
-if (defined $KVG_VERSION) {
-    print TOC "kvgVersion = $KVG_VERSION\n";
-}
 
 # units = file lines.
 my $recordTotalOffset = 0;
 my %avgIndexInfo = ();
 my @toc = ();
+if (defined $KVG_VERSION) {
+    push @toc, "kvgVersion = $KVG_VERSION";
+}
 for my $key (@keysSorted) {
     for my $svgFile (@{$svgFilesByChar{$key}}) {
         my ($renderFile, @renderPaths) = ParseSvgFile($svgFile);

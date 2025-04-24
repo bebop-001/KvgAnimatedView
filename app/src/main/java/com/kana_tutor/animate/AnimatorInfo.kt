@@ -2,6 +2,7 @@ package com.kana_tutor.animate
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
 import java.io.File
@@ -81,6 +82,10 @@ class AnimatorInfo {
                 val fileRecordRegex = """(\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
                 recordsById.clear()
                 for(line in tocLines) {
+                    if (line.startsWith("kvgVersion")) {
+                        Log.d(TAG, "$line\n")
+                        continue
+                    }
                     val recordId = line.split("""\s*=\s*""".toRegex()).first()
                     fileRecordRegex.findAll(line)
                         .toList().map{
