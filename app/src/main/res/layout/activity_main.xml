@@ -27,7 +27,7 @@
         android:layout_height="wrap_content"
         android:padding="20dp"
         android:textAllCaps="false"
-        android:text="Press when kvg paths file is loaded"
+        android:text="@string/load_prompt"
         android:textSize="16sp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -36,6 +36,24 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.5" />
+
+    <EditText
+        android:id="@+id/kanji_select_et"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/border_bg"
+        android:singleLine="true"
+        android:textSize="20sp"
+        android:textAllCaps="false"
+        android:textStyle="bold"
+        android:padding="3dp"
+        android:gravity="center_horizontal"
+        android:hint="@string/select_kanji"
+        android:imeOptions="actionSearch"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        />
 
     <GridView
         android:id="@+id/animate_select_grid"
@@ -51,6 +69,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/kanji_select_et"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

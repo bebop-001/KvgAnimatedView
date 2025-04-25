@@ -42,5 +42,7 @@
     <string name="normal">Animate Normal</string>
     <string name="fast">Animate Fast</string>
     <string name="update_animation_zip">Replace/Update animations file</string>
+    <string name="select_kanji">select kanji</string>
+    <string name="load_prompt">Press when kvg paths file is loaded</string>
 
 </resources>

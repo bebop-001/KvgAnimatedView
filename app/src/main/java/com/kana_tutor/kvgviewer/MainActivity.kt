@@ -29,6 +29,7 @@ import android.view.View.OnClickListener
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.GridView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,15 +40,17 @@ import androidx.core.text.HtmlCompat
 import androidx.core.text.toSpanned
 import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
+import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
+import com.kana_tutor.utils.SFResult
 import com.kana_tutor.utils.baseName
 import com.kana_tutor.utils.cpErrorMap
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
 import com.kana_tutor.utils.getUnzipFromRemote
 import com.kana_tutor.utils.getZipFromRemote
-import com.kana_tutor.utils.getZipRequest
+import com.kana_tutor.utils.importZipObserved
 import com.kana_tutor.utils.uriCp
 import com.kana_tutor.utils.uriCpIoError
 import com.kana_tutor.utils.uriToFileName
@@ -107,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var selectorGrid: GridView
     private lateinit var downloadPromptBtn : Button
+    private lateinit var kanjiSelectEt: EditText
 
     class ViewHolder (
         var position: Int,
@@ -145,13 +149,23 @@ class MainActivity : AppCompatActivity() {
                 button.tag = vh
                 button.text = itemText
             }
-            else if (vh.position != position) {
+            else if (vh.position != position || vh.text != itemText) {
                 vh.position = position
                 vh.text = itemText
                 button.text = itemText
             }
             return button
         }
+    }
+    fun String.codePointSplit(): List<String> {
+        val rv = mutableListOf<String>()
+        var idx = 0
+        while (idx < length) {
+            val len = if (this.hasSurrogatePairAt(idx)) 2 else 1
+            rv.add(this.substring(idx, idx + len))
+            idx += len
+        }
+        return rv
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -161,7 +175,20 @@ class MainActivity : AppCompatActivity() {
         downloadPromptBtn.setOnClickListener {
             AnimatorInfo.initialize() }
 
+        kanjiSelectEt = findViewById(R.id.kanji_select_et)
         val gridAdapter = GridAdapter()
+        kanjiSelectEt.setOnClickListener{ val et = it as EditText
+
+            val etKanji = et.text.toString().codePointSplit()
+                .filter{pathIdByKanji.contains(it)}
+            val pathIds = mutableSetOf<String>()
+            for (kanji in etKanji) pathIds.addAll(pathIdByKanji[kanji]!!)
+            gridAdapter.update(
+                if (pathIds.isNotEmpty()) pathIds
+                else AnimatorInfo.recordsById.keys
+            )
+        }
+
         AnimatorInfo.initResults.observe { val (success, mess) = it
                 Toast.makeText(this,
                 "AnimatorInfo init results:" +
@@ -247,6 +274,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun updateAnimationsFiles() :Boolean{
+        val updateId = "updateAnimationsFiles"
+        importZipObserved.value.clear()
+        importZipObserved.value.id = updateId
         val currentAniFiles = externalStorageRoot.list()!!.filter{
             it.contains("""^kvg.*\.(toc|zip)$""".toRegex()) &&
                     File(externalStorageRoot, it).isFile
@@ -256,11 +286,11 @@ class MainActivity : AppCompatActivity() {
                 throw RuntimeException("updateAnimationsFiles: " +
                         "Unable to delete($it)")
         }
-        val updateId = "updateAnime"
-        getZipRequest.value = Pair(updateId, "")
+        importZipObserved.value = SFResult(updateId)
         getZipFromRemote.launch(arrayOf("application/zip"))
-        getZipRequest.observe { val (id, file) = it
-            if (id == updateId && file.isNotEmpty()) {
+        importZipObserved.observe { result ->
+            Log.d(TAG, result.from)
+            if (result.id == updateId && result.success) {
                 AnimatorInfo.initialize()
             }
         }
@@ -310,7 +340,7 @@ class MainActivity : AppCompatActivity() {
                     putZipToRemote.launch("File.zip")
                 }
                 R.id.import_zip -> {
-                    Log.d(TAG, "Import Zip: request = \"${getZipRequest.value.first}\"")
+                    importZipObserved.value = SFResult("import_zip")
                     getZipFromRemote.launch(arrayOf("application/zip"))
                 }
                 R.id.import_file ->
