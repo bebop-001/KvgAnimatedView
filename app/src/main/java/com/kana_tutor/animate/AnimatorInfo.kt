@@ -33,10 +33,14 @@ class AnimatorInfo {
             val selectors = listOf(offset, length)
         }
         // pathId is key.
-        val recordsById = mutableMapOf<String,PathRecord>()
+        private val byId = mutableMapOf<String,PathRecord>()
+        val recordsById: Map<String, PathRecord> = byId
+        private val byKanji = mutableMapOf<String, MutableList<String>>()
+        val pathIdByKanji : Map<String, List<String>> = byKanji
+
 
         fun getPathData(pathId: String): String {
-            val pathRecord = recordsById[pathId]!!
+            val pathRecord = byId[pathId]!!
             val zipEntry = zipFile!!.getEntry(pathRecord.recordId)
             val recordLines = zipFile!!.getInputStream(zipEntry)
                 .readBytes()
@@ -60,7 +64,7 @@ class AnimatorInfo {
                 initResults.value = false to "no \"kvgPaths-NNN.avg\" found"
             }
             else if (names.size > 1) {
-                initResults.value = false to "Multiple evg path files found: $names"
+                initResults.value = false to "Multiple avg path files found: $names"
             }
             else {
                 // found a valid zip file.
@@ -79,8 +83,8 @@ class AnimatorInfo {
                 .toString(Charset.forName("UTF-8"))
                     .split("""\s*\n\s*""".toRegex())
                     .toList()
-                val fileRecordRegex = """(\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
-                recordsById.clear()
+                val fileRecordRegex = """\s+((\S+)\.\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
+                byId.clear()
                 for(line in tocLines) {
                     if (line.startsWith("kvgVersion")) {
                         Log.d(TAG, "$line\n")
@@ -89,11 +93,12 @@ class AnimatorInfo {
                     val recordId = line.split("""\s*=\s*""".toRegex()).first()
                     fileRecordRegex.findAll(line)
                         .toList().map{
-                            val (pathId, a, b) = it.groupValues.takeLast(3)
-                            recordsById[pathId] = PathRecord(
+                            val (pathId, kanji, a, b) = it.groupValues.takeLast(4)
+                            byId[pathId] = PathRecord(
                                 pathId, recordId,
                                 a.toInt(16), b.toInt(16)
                             )
+                            byKanji.getOrPut(kanji){ mutableListOf()}.add(pathId)
                         }
                 }
                 initResults.value = true to "success: Found $zipFile"
