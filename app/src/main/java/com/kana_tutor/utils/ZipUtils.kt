@@ -1,3 +1,4 @@
+@file:Suppress("unused")
 package com.kana_tutor.utils
 
 import android.app.Activity
@@ -7,9 +8,15 @@ import android.os.Environment
 import android.os.StatFs
 import android.util.Log
 import android.widget.Toast
-import com.kana_tutor.kvgviewer.KvgViewer
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.appContext
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.appFilesDir
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
-import java.io.*
+import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.URLDecoder
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -17,7 +24,7 @@ import java.util.zip.ZipOutputStream
 
 
 @Suppress("unused")
-private const val TAG = "ZipFileUtils"
+private const val TAG = "ZipUtils"
 
 private const val BUFFER_SIZE = 0x1000
 data class ZipInfo (
@@ -86,14 +93,14 @@ fun unzipFile(
     val exDirs = extractDirs?.map {
         it.replace("""/*$""".toRegex(), "/")
     }
-    val baseDir = File(KvgViewer.appFilesDir, baseDirName)
+    val baseDir = File(appFilesDir, baseDirName)
     val buffer = ByteArray(BUFFER_SIZE)
     var unzippedBytes = 0L
     try {
         val zipStream = ZipInputStream(BufferedInputStream(inStream))
         var ze: ZipEntry? = zipStream.nextEntry
         if (ze == null) {
-            Toast.makeText(KvgViewer.appContext,
+            Toast.makeText(appContext,
                 "unzipFile: Input doesn't appear to be a zip file.",
                 Toast.LENGTH_LONG).show()
             return 0L
@@ -106,9 +113,9 @@ fun unzipFile(
             val (dirName, fileName) = "^(.*/)*(?:([^/]+))*$".toRegex()
                 .find(zippedFileName)!!.groupValues.takeLast(2)
             val unzip = exDirs.isNullOrEmpty() ||
-                exDirs.firstOrNull { dir ->
-                    "^$dir.*".toRegex().matches(dirName)
-                } != null
+                    exDirs.firstOrNull { dir ->
+                        "^$dir.*".toRegex().matches(dirName)
+                    } != null
             if (unzip) {
                 mkdirs(baseDir, dirName)
                 if (fileName.isNotEmpty()) {
@@ -135,7 +142,7 @@ fun unzipFile(
     }
     catch (e: java.lang.Exception) {
         throw java.lang.RuntimeException("$TAG: Unzip failed: " +
-            "${e.message}:\n${e.stackTrace}")
+                "${e.message}:\n${e.stackTrace}")
     }
     Log.d(TAG, "unzipped $unzippedBytes bytes total")
     return unzippedBytes
@@ -255,8 +262,8 @@ fun Context.createZipFile(
     }
     return unzippedBytes
 }
-// first is requestor.  Second if not empty is new file.
-val getZipRequest = ObservedPair(Pair("", ""))
+// first is requester.  Second if not empty is new file.
+val importZipObserved = Observed(SFResult())
 fun Activity.getZipFromRemote(uri: Uri) {
     val inputStream: InputStream = contentResolver.openInputStream(uri)!!
     val fileBaseName = uriToFileName(uri).baseName()
@@ -269,15 +276,19 @@ fun Activity.getZipFromRemote(uri: Uri) {
         Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
         Log.d(TAG, mess)
         // Notify zip fetch complete.
-        getZipRequest.value = Pair(
-            getZipRequest.value_ro.first, outFile.toString())
+        val result = importZipObserved.value
+        result.src = fileBaseName
+        result.dest = outFile.baseName()
+        result.success = true
+        result.message = mess
+        importZipObserved.value = result
     }
     if (!outFile.exists()) doCp()
     else yesNo("Overwrite $fileBaseName") {y ->
         if (y) doCp()
         else
             Toast.makeText(
-            this, "aborting...", Toast.LENGTH_LONG
+                this, "aborting...", Toast.LENGTH_LONG
             ).show()
     }
 }

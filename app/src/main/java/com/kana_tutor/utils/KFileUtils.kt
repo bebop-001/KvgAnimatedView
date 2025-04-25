@@ -17,6 +17,30 @@ import java.net.URLDecoder
 private const val TAG = "KFileUtils"
 
 class FileUtilsException(mess: String) : RuntimeException(mess)
+// result of storage framework transaction.
+data class SFResult (
+    var id:String = "",
+    var success:Boolean = false,
+    var src: String? = null,
+    var dest: String? = null,
+    var message:String? = null
+) {
+    val from: String
+        get() = "$id:" +
+            when (success) {
+                null -> "not set"
+                true -> "successful"
+                else -> "Failed"} +
+            "${src ?: "Not set"} -> ${dest ?: "Not set"} " +
+            if (message.isNotNullOrEmpty()) ":$message" else ""
+    val to: String
+        get() = "id: $src -> $dest"
+    fun clear() {
+        id = ""; src = null; dest = null; message = null
+    }
+}
+fun CharSequence?.isNotNullOrEmpty(): Boolean =
+    this != null && this.isNotEmpty()
 
 private const val BUFFER_SIZE = 0x1000
 fun cp(inStream: InputStream, outStream: OutputStream) : Long {
