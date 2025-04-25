@@ -28,7 +28,6 @@ data class SFResult (
     val from: String
         get() = "$id:" +
             when (success) {
-                null -> "not set"
                 true -> "successful"
                 else -> "Failed"} +
             "${src ?: "Not set"} -> ${dest ?: "Not set"} " +
