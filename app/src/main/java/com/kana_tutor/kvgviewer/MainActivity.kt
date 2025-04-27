@@ -150,15 +150,10 @@ class MainActivity : AppCompatActivity() {
                     false) as Button
                 button.setTypeface(minchoTypeFace, Typeface.BOLD)
                 button.setOnClickListener(OnClickListener { v ->
-                    val b = v as Button
-                    // if text is an avg file, animate that.
-                    // Otherwise it should be a kanji with
-                    // only one avg file.  Get the file and
-                    // animate it.
-                    val kanji = b.text.toString()
-                    val pathId = avgSelect(pathIdByKanji[kanji]!!,
-                        {pathId -> startAnimatorActivity(pathId)})
-
+                    val kanji = (v as Button).text
+                    avgSelect(pathIdByKanji[kanji]!!) { pathId ->
+                        startAnimatorActivity(pathId)
+                    }
                 })
             }
             val itemText = getItem(position)
