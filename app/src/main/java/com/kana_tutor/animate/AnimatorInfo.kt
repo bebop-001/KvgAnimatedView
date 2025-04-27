@@ -34,13 +34,12 @@ class AnimatorInfo {
         }
         // pathId is key.
         private val byId = mutableMapOf<String,PathRecord>()
-        val recordsById: Map<String, PathRecord> = byId
+        private val recordsById: Map<String, PathRecord> = byId
         private val byKanji = mutableMapOf<String, MutableSet<String>>()
         val pathIdByKanji : Map<String, Set<String>> = byKanji
 
-
         fun getPathData(pathId: String): String {
-            val pathRecord = byId[pathId]!!
+            val pathRecord = recordsById[pathId]!!
             val zipEntry = zipFile!!.getEntry(pathRecord.recordId)
             val recordLines = zipFile!!.getInputStream(zipEntry)
                 .readBytes()
