@@ -25,12 +25,12 @@ class AnimatorInfo {
         // is the character-range of the kanji in tha record.
         // The path of the record contains the id of the animated
         // character as "kanji.style.avg", the offset into the
-        // zipped record and the length of the record.
+        // s
         data class PathRecord (
             val pathId: String, val recordId: String,
-            val offset: Int, val length: Int
+            val offset: Int, val length: Int, val stroke_count: Int
         ) {
-            val selectors = listOf(offset, length)
+            val selectors = listOf(offset, length, stroke_count)
         }
         // pathId is key.
         private val byId = mutableMapOf<String,PathRecord>()
@@ -45,7 +45,7 @@ class AnimatorInfo {
                 .readBytes()
                 .toString(Charset.forName("UTF-8"))
                 .split("\n")
-            val (offset, len) = pathRecord.selectors
+            val (offset, len, stroke_count) = pathRecord.selectors
             @SuppressLint("InlinedApi")
             val rv = recordLines.subList(offset, len + offset + 1)
                 .joinToString("\n")
@@ -56,52 +56,62 @@ class AnimatorInfo {
             if (zipFile != null) {
                 initResults.value = true to "success"
             }
-            // Make sure we have one and only one zip file.
-            val names= externalStorageRoot.list()
-                ?.filter { it.contains("""^kvgPaths(-\d+).zip$""".toRegex()) }
-            if (names.isNullOrEmpty()) {
-                initResults.value = false to "no \"kvgPaths-NNN.avg\" found"
-            }
-            else if (names.size > 1) {
-                initResults.value = false to "Multiple avg path files found: $names"
-            }
-            else {
-                // found a valid zip file.
-                val zff = File(externalStorageRoot, names[0])
-                zf = if (Build.VERSION.SDK_INT >= 24) {
-                    ZipFile(zff, Charset.forName("UTF-8"))
+            try {
+                // Make sure we have one and only one zip file.
+                val names= externalStorageRoot.list()
+                    ?.filter { it.contains("""^kvgPaths(-\d+).zip$""".toRegex()) }
+                if (names.isNullOrEmpty()) {
+                    initResults.value = false to "no \"kvgPaths-NNN.avg\" found"
+                }
+                else if (names.size > 1) {
+                    initResults.value = false to "Multiple avg path files found: $names"
                 }
                 else {
-                    ZipFile(zff)
-                }
-
-                val tocEntryName = "paths/avg.toc.txt"
-                val tocLines = zipFile!!.getInputStream(
-                    zipFile!!.getEntry(tocEntryName)
-                ).readBytes()
-                .toString(Charset.forName("UTF-8"))
-                    .split("""\s*\n\s*""".toRegex())
-                    .toList()
-                val fileRecordRegex = """\s+((\S)(?:-\S+)*\.avg)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
-                byId.clear()
-                for(line in tocLines) {
-                    if (line.startsWith("kvgVersion")) {
-                        Log.d(TAG, "$line\n")
-                        continue
+                    // found a valid zip file.
+                    val zff = File(externalStorageRoot, names[0])
+                    zf = if (Build.VERSION.SDK_INT >= 24) {
+                        ZipFile(zff, Charset.forName("UTF-8"))
+                    } else {
+                        ZipFile(zff)
                     }
-                    val recordId = line.split("""\s*=\s*""".toRegex()).first()
 
-                    fileRecordRegex.findAll(line)
-                        .toList().map{
-                            val (pathId, kanji, a, b) = it.groupValues.takeLast(4)
+                    val tocEntryName = "paths/avg.toc.txt"
+                    val tocLines = zipFile!!.getInputStream(
+                        zipFile!!.getEntry(tocEntryName)
+                    ).readBytes()
+                        .toString(Charset.forName("UTF-8"))
+                        .split("""\s*\n\s*""".toRegex())
+                        .toList()
+                    val fileRecordRegex = """\s+((\S)(?:-\S+)*\.avg)
+                        ([0-9a-fA-F]{3})    # offset into record file in line feeds
+                        ([0-9a-fA-F]{2})    # length of path info in line feeds
+                        ([0-9a-fA-F]{2})    # number of paths in record
+                        """.trimIndent().toRegex(RegexOption.COMMENTS)
+                    byId.clear()
+
+                    for (line in tocLines) {
+                        if (line.startsWith("kvgVersion")) {
+                            Log.d(TAG, "$line\n")
+                            continue
+                        }
+                        val recordId = line.split("""\s*=\s*""".toRegex()).first()
+                        val found = fileRecordRegex.findAll(line).toList()
+                        if (found.isEmpty())
+                            throw RuntimeException("$TAG: Bad record: Failed to parse $line")
+                        found.map {
+                            val (pathId, kanji, a, b, stroke_count) = it.groupValues.takeLast(5)
                             byId[pathId] = PathRecord(
                                 pathId, recordId,
-                                a.toInt(16), b.toInt(16)
+                                a.toInt(16), b.toInt(16), stroke_count.toInt(16)
                             )
-                            byKanji.getOrPut(kanji){ mutableSetOf() }.add(pathId)
+                            byKanji.getOrPut(kanji) { mutableSetOf() }.add(pathId)
                         }
+                    }
+                    initResults.value = true to "success: Found $zipFile"
                 }
-                initResults.value = true to "success: Found $zipFile"
+            }
+            catch (e: Exception) {
+                initResults.value = false to "Failed tp parse paths file: ${e.message}"
             }
         }
     }

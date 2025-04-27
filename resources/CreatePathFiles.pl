@@ -190,7 +190,7 @@ sub ParseSvgFile {
         push @failed, "$svgFile: undef.";
         print "* ";
     }
-    return $renderFile, @pathInfo;
+    return $renderFile, scalar @paths, @pathInfo;
 }
 
 my @kana = qw (
@@ -243,7 +243,7 @@ sub getRangeFileName {
 
 my %fileInfo = ();
 sub putPaths {
-    my %fileInfo = %{$_[0]};
+    my %avgInfo = %{$_[0]};
     my @paths = @{$_[1]};
     my $rangeFileName = getRangeFileName(@paths);
     open (OUT2, "> $rangeFileName")
@@ -255,11 +255,12 @@ sub putPaths {
     my @files = map {m{^.(.*)}; $1}
         grep (m{^N},
             split("\n", join('', @paths)));
-        @files = map {
-            my %fi = %{$fileInfo{$_}};
-            $_ = sprintf("%s%03x%02x", $_, $fi{index}, $fi{length});
-            $_
-        } @files;
+    @files = map {
+        my %fi = %{$avgInfo{$_}};
+        sprintf("%s%03x%02x%02x", $_,
+            $fi{index}, $fi{length}, $fi{stroke_count}
+        );
+    } @files;
 
     if ($GZIP) {
         unlink("$rangeFileName.gz");
@@ -284,7 +285,8 @@ if (defined $KVG_VERSION) {
 }
 for my $key (@keysSorted) {
     for my $svgFile (@{$svgFilesByChar{$key}}) {
-        my ($renderFile, @renderPaths) = ParseSvgFile($svgFile);
+        my ($renderFile, $strokeCount, @renderPaths)
+           = ParseSvgFile($svgFile);
         # svg allows spaces as separators.  In avg, no white space
         # is allowed. operators cC and mM are considered as separators.
         # Numbers use ',',  In the case of a negative number, the '-'
@@ -294,7 +296,9 @@ for my $key (@keysSorted) {
             s/\s+(\d+)/,$1/g;
             s/\s+//g; }
         $avgIndexInfo{$renderFile} =
-            {length => $#renderPaths, index => $recordTotalOffset};
+            {length => $#renderPaths,
+            index => $recordTotalOffset,
+            stroke_count => $strokeCount};
         $recordTotalOffset += scalar @renderPaths;
         push @paths, join("\n", @renderPaths);
     }
