@@ -155,10 +155,10 @@ class MainActivity : AppCompatActivity() {
                     // Otherwise it should be a kanji with
                     // only one avg file.  Get the file and
                     // animate it.
-                    val bt = b.text.toString()
-                    val buttonText = if (bt.endsWith(".avg")) bt
-                        else pathIdByKanji[bt]!!.first()
-                    startAnimatorActivity(buttonText)
+                    val kanji = b.text.toString()
+                    val pathId = avgSelect(pathIdByKanji[kanji]!!,
+                        {pathId -> startAnimatorActivity(pathId)})
+
                 })
             }
             val itemText = getItem(position)
@@ -244,9 +244,7 @@ class MainActivity : AppCompatActivity() {
                         .filter{pathIdByKanji.contains(it)}
                         .toSet().sorted()
                     if (kanji.isNotEmpty()) {
-                        val newText = kanjiSelectEt.text.toString() +
-                                kanji.joinToString(", ")
-                        kanjiSelectEt.setText(newText)
+                        kanjiSelectEt.setText(sentString)
                         val pathId = pathIdByKanji[kanji[0]]!!.minOf { it }
                         startAnimatorActivity(pathId)
                     }
