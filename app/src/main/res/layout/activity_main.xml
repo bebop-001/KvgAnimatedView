@@ -63,7 +63,7 @@
         android:layout_marginBottom="3dp"
         android:background="@drawable/border_bg"
         android:horizontalSpacing="10dp"
-        android:numColumns="auto_fit"
+        android:numColumns="5"
         android:padding="6dp"
         android:verticalSpacing="10dp"
         app:layout_constraintBottom_toBottomOf="parent"

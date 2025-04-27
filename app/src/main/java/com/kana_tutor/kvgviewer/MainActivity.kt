@@ -17,6 +17,8 @@
 package com.kana_tutor.kvgviewer
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Parcelable
 import android.text.Spanned
@@ -45,6 +47,7 @@ import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.SFResult
 import com.kana_tutor.utils.baseName
+import com.kana_tutor.utils.codePointSplit
 import com.kana_tutor.utils.cpErrorMap
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
@@ -116,14 +119,24 @@ class MainActivity : AppCompatActivity() {
         var position: Int,
         var text: String
     )
+    lateinit var minchoTypeFace: Typeface
 
     inner class GridAdapter: BaseAdapter() {
         private val localList = mutableListOf<String>()
-        fun update(newStuff: Set<String>) {
+        // Take what ever comes in, join to a string,update
+        // extract the kanji and if kanji only has one
+        // style, ad the kanji otherwise add all style keys
+        // for the kanji
+        fun update(newStuff: String) {
+            val kanji = newStuff.codePointSplit()
+                .filter { pathIdByKanji.keys.contains(it) }
+                .toSet()
             localList.clear()
-            localList.addAll(newStuff.sorted())
+            localList.addAll(kanji.sorted())
             notifyDataSetChanged()
         }
+        fun update(newStuff: Set<String>) =
+            update(newStuff.joinToString(""))
         override fun getCount(): Int = localList.size
         override fun getItem(position: Int): String = localList[position]
         override fun getItemId(position: Int): Long = localList[position].hashCode().toLong()
@@ -135,11 +148,17 @@ class MainActivity : AppCompatActivity() {
                     R.layout.animate_select_button,
                     parent,
                     false) as Button
+                button.setTypeface(minchoTypeFace, Typeface.BOLD)
                 button.setOnClickListener(OnClickListener { v ->
                     val b = v as Button
-                    // Text is the avg file name for the
-                    // kanji we want to animate.
-                    startAnimatorActivity(b.text.toString())
+                    // if text is an avg file, animate that.
+                    // Otherwise it should be a kanji with
+                    // only one avg file.  Get the file and
+                    // animate it.
+                    val bt = b.text.toString()
+                    val buttonText = if (bt.endsWith(".avg")) bt
+                        else pathIdByKanji[bt]!!.first()
+                    startAnimatorActivity(buttonText)
                 })
             }
             val itemText = getItem(position)
@@ -148,6 +167,12 @@ class MainActivity : AppCompatActivity() {
                 vh = ViewHolder(position, itemText)
                 button.tag = vh
                 button.text = itemText
+                button.setTextColor(
+                    if (pathIdByKanji.containsKey(itemText))
+                        if (pathIdByKanji[itemText]!!.size == 1) Color.BLUE
+                        else Color.RED
+                    else Color.RED
+                )
             }
             else if (vh.position != position || vh.text != itemText) {
                 vh.position = position
@@ -157,16 +182,8 @@ class MainActivity : AppCompatActivity() {
             return button
         }
     }
-    fun String.codePointSplit(): List<String> {
-        val rv = mutableListOf<String>()
-        var idx = 0
-        while (idx < length) {
-            val len = if (this.hasSurrogatePairAt(idx)) 2 else 1
-            rv.add(this.substring(idx, idx + len))
-            idx += len
-        }
-        return rv
-    }
+    private var sentString = ""
+    private val gridAdapter = GridAdapter()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -176,35 +193,24 @@ class MainActivity : AppCompatActivity() {
             AnimatorInfo.initialize() }
 
         kanjiSelectEt = findViewById(R.id.kanji_select_et)
-        val gridAdapter = GridAdapter()
         kanjiSelectEt.setOnClickListener{ val et = it as EditText
-
-            val etKanji = et.text.toString().codePointSplit()
-                .filter{pathIdByKanji.contains(it)}
-            val pathIds = mutableSetOf<String>()
-            for (kanji in etKanji) pathIds.addAll(pathIdByKanji[kanji]!!)
-            gridAdapter.update(
-                if (pathIds.isNotEmpty()) pathIds
-                else AnimatorInfo.recordsById.keys
-            )
+            gridAdapter.update(et.text.toString())
         }
 
-        AnimatorInfo.initResults.observe { val (success, mess) = it
-                Toast.makeText(this,
-                "AnimatorInfo init results:" +
-                    (if(success) "Success" else "FAIL") +
-                    "\n$mess",
-                    Toast.LENGTH_LONG
-                ).show()
-            if (success) {
-                gridAdapter.update(AnimatorInfo.recordsById.keys)
-                downloadPromptBtn.visibility = View.GONE
-            }
-            else
-                downloadPromptBtn.visibility = View.VISIBLE
-        }
+        minchoTypeFace = Typeface.createFromAsset(assets, "fonts/HanaMinA.ttf")
+
         AnimatorInfo.initialize()
-        gridAdapter.update(AnimatorInfo.recordsById.keys)
+        // Check for code sent by another app using
+        // intent.SEND and putting the kanji into
+        // Intent.EXTRA_TEXT as data mime type
+        // text/plain
+        if (intent != null && intent.action == Intent.ACTION_SEND
+            && intent.type == "text/plain" &&
+            intent.extras != null) {
+
+            sentString = intent.extras!!
+                .getString(Intent.EXTRA_TEXT).toString()
+        }
         selectorGrid.adapter = gridAdapter
     }
     override fun onPause() {
@@ -212,19 +218,57 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onPause")
         scrollState = selectorGrid.onSaveInstanceState()
     }
+    private fun startAnimatorActivity(avgPathName: String) {
+        val animateIntent = Intent(applicationContext, AnimatorActivity::class.java)
+        animateIntent.putExtra("avgPathName", avgPathName)
+        startActivity(animateIntent)
+    }
 
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume")
         if (scrollState != null)
             selectorGrid.onRestoreInstanceState(scrollState)
+
+        AnimatorInfo.initResults.observe { val (success, mess) = it
+            Toast.makeText(this,
+                "AnimatorInfo init results:" +
+                        (if(success) "Success" else "FAIL") +
+                        "\n$mess",
+                Toast.LENGTH_LONG
+            ).show()
+            if (success) {
+                @Suppress("NestedLambdaShadowedImplicitParameter")
+                if (sentString.isNotEmpty()) {
+                    val kanji = sentString.codePointSplit()
+                        .filter{pathIdByKanji.contains(it)}
+                        .toSet().sorted()
+                    if (kanji.isNotEmpty()) {
+                        val newText = kanjiSelectEt.text.toString() +
+                                kanji.joinToString(", ")
+                        kanjiSelectEt.setText(newText)
+                        val pathId = pathIdByKanji[kanji[0]]!!.minOf { it }
+                        startAnimatorActivity(pathId)
+                    }
+                    sentString = ""
+                }
+                else gridAdapter.update(pathIdByKanji.keys)
+                downloadPromptBtn.visibility = View.GONE
+            }
+            else
+                downloadPromptBtn.visibility = View.VISIBLE
+
+            val currentText = kanjiSelectEt.text.toString()
+            if (currentText.isNotEmpty()) gridAdapter.update(currentText)
+            else gridAdapter.update(pathIdByKanji.keys)
+        }
+
+
+
+
+
     }
 
-    private fun startAnimatorActivity(avgPathName: String) {
-        val animateIntent = Intent(applicationContext, AnimatorActivity::class.java)
-        animateIntent.putExtra("avgPathName", avgPathName)
-        startActivity(animateIntent)
-    }
 
     //=================================
 

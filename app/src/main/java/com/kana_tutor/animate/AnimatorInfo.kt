@@ -35,8 +35,8 @@ class AnimatorInfo {
         // pathId is key.
         private val byId = mutableMapOf<String,PathRecord>()
         val recordsById: Map<String, PathRecord> = byId
-        private val byKanji = mutableMapOf<String, MutableList<String>>()
-        val pathIdByKanji : Map<String, List<String>> = byKanji
+        private val byKanji = mutableMapOf<String, MutableSet<String>>()
+        val pathIdByKanji : Map<String, Set<String>> = byKanji
 
 
         fun getPathData(pathId: String): String {
@@ -83,7 +83,7 @@ class AnimatorInfo {
                 .toString(Charset.forName("UTF-8"))
                     .split("""\s*\n\s*""".toRegex())
                     .toList()
-                val fileRecordRegex = """\s+((\S+)\.\S+)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
+                val fileRecordRegex = """\s+((\S)(?:-\S+)*\.avg)([0-9a-fA-F]{3})([0-9a-fA-F]{2})""".toRegex()
                 byId.clear()
                 for(line in tocLines) {
                     if (line.startsWith("kvgVersion")) {
@@ -91,6 +91,7 @@ class AnimatorInfo {
                         continue
                     }
                     val recordId = line.split("""\s*=\s*""".toRegex()).first()
+
                     fileRecordRegex.findAll(line)
                         .toList().map{
                             val (pathId, kanji, a, b) = it.groupValues.takeLast(4)
@@ -98,7 +99,7 @@ class AnimatorInfo {
                                 pathId, recordId,
                                 a.toInt(16), b.toInt(16)
                             )
-                            byKanji.getOrPut(kanji){ mutableListOf()}.add(pathId)
+                            byKanji.getOrPut(kanji){ mutableSetOf() }.add(pathId)
                         }
                 }
                 initResults.value = true to "success: Found $zipFile"
