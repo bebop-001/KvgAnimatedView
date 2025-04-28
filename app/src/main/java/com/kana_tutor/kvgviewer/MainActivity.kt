@@ -39,10 +39,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
+import androidx.core.text.isDigitsOnly
 import androidx.core.text.toSpanned
 import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
+import com.kana_tutor.animate.AnimatorInfo.Companion.indexedKanjiSort
 import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
@@ -130,10 +132,9 @@ class MainActivity : AppCompatActivity() {
         // for the kanji
         fun update(newStuff: String) {
             val kanji = newStuff.codePointSplit()
-                .filter { pathIdByKanji.keys.contains(it) }
                 .toSet()
             localList.clear()
-            localList.addAll(kanji.sorted())
+            localList.addAll(indexedKanjiSort(kanji))
             notifyDataSetChanged()
         }
         fun update(newStuff: Set<String>) =
@@ -151,30 +152,33 @@ class MainActivity : AppCompatActivity() {
                     false) as Button
                 button.setTypeface(minchoTypeFace, Typeface.BOLD)
                 button.setOnClickListener(OnClickListener { v ->
-                    val kanji = (v as Button).text
-                    val pathIds: Map<String, PathRecord> = pathIdByKanji[kanji]!!
-                    avgSelect(pathIds.keys) { pathId ->
-                        startAnimatorActivity(pathId)
+                    val text = (v as Button).text
+                    if (pathIdByKanji.containsKey(text)) {
+                        val pathIds: Map<String, PathRecord> =
+                            pathIdByKanji[text]!!
+                        avgSelect(pathIds.keys) { pathId ->
+                            startAnimatorActivity(pathId)
+                        }
                     }
                 })
             }
             val itemText = getItem(position)
             var vh = button.tag as ViewHolder?
             if (vh == null) {
-                vh = ViewHolder(position, itemText)
+                vh = ViewHolder(-1, itemText)
                 button.tag = vh
+            }
+            if (vh.position != position || vh.text != itemText) {
                 button.text = itemText
                 button.setTextColor(
                     if (pathIdByKanji.containsKey(itemText))
-                        if (pathIdByKanji[itemText]!!.size == 1) Color.BLUE
-                        else Color.RED
-                    else Color.RED
+                        if (pathIdByKanji[itemText]!!.size == 1)
+                            Color.BLUE
+                        else Color.GREEN
+                    else if (itemText.isDigitsOnly())
+                        Color.RED
+                    else Color.GREEN
                 )
-            }
-            else if (vh.position != position || vh.text != itemText) {
-                vh.position = position
-                vh.text = itemText
-                button.text = itemText
             }
             return button
         }

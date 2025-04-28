@@ -10,7 +10,6 @@ import java.io.File
 import java.nio.charset.Charset
 import java.util.zip.ZipFile
 
-
 @Suppress("unused")
 private const val TAG = "AnimatorInfo"
 @Suppress("FoldInitializerAndIfToElvis", "LocalVariableName",
@@ -54,6 +53,23 @@ class AnimatorInfo {
             @SuppressLint("InlinedApi")
             val rv = recordLines.subList(offset, len + offset + 1)
                 .joinToString("\n")
+            return rv
+        }
+        fun indexedKanjiSort(kanji: Collection<String>): List<String> {
+            val byStrokeCount = mutableMapOf<Int,MutableSet<String>>()
+            kanji.filter { pathIdByKanji.containsKey(it) }
+                .map { k ->
+                    val x: Collection<PathRecord> =
+                        pathIdByKanji[k]!!.values
+                    val sc = x.map{it.stroke_count}.min()
+                    byStrokeCount.getOrPut(sc){ mutableSetOf()}
+                        .add(k)
+                }
+            val rv = mutableListOf<String>()
+            byStrokeCount.keys.sorted().map{ sc ->
+                rv.add(sc.toString())
+                rv.addAll(byStrokeCount[sc]!!.sorted())
+            }
             return rv
         }
 
