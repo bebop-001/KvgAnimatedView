@@ -42,6 +42,7 @@ import androidx.core.text.HtmlCompat
 import androidx.core.text.toSpanned
 import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
+import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
 import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
@@ -151,7 +152,8 @@ class MainActivity : AppCompatActivity() {
                 button.setTypeface(minchoTypeFace, Typeface.BOLD)
                 button.setOnClickListener(OnClickListener { v ->
                     val kanji = (v as Button).text
-                    avgSelect(pathIdByKanji[kanji]!!) { pathId ->
+                    val pathIds: Map<String, PathRecord> = pathIdByKanji[kanji]!!
+                    avgSelect(pathIds.keys) { pathId ->
                         startAnimatorActivity(pathId)
                     }
                 })
@@ -233,14 +235,21 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
             if (success) {
+                // sentString will not be empty iff the app was
+                // started as thr result of a "share" from
+                // another app.
                 @Suppress("NestedLambdaShadowedImplicitParameter")
                 if (sentString.isNotEmpty()) {
                     val kanji = sentString.codePointSplit()
                         .filter{pathIdByKanji.contains(it)}
                         .toSet().sorted()
+                    // For a "shared" kanji string, tart the
+                    // animator with the first path record of
+                    // the first kanji we find.
                     if (kanji.isNotEmpty()) {
                         kanjiSelectEt.setText(sentString)
-                        val pathId = pathIdByKanji[kanji[0]]!!.minOf { it }
+                        val pathId = pathIdByKanji[kanji[0]]!!
+                            .keys.minOf { it }
                         startAnimatorActivity(pathId)
                     }
                     sentString = ""

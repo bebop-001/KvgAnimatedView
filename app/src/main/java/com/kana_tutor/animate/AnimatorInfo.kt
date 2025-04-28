@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.utils.ObservedPair
+import com.kana_tutor.utils.codePointSplit
 import java.io.File
 import java.nio.charset.Charset
 import java.util.zip.ZipFile
@@ -12,6 +13,8 @@ import java.util.zip.ZipFile
 
 @Suppress("unused")
 private const val TAG = "AnimatorInfo"
+@Suppress("FoldInitializerAndIfToElvis", "LocalVariableName",
+    "PropertyName")
 class AnimatorInfo {
     companion object {
         val initResults = ObservedPair(Pair(false, ""))
@@ -33,19 +36,21 @@ class AnimatorInfo {
             val selectors = listOf(offset, length, stroke_count)
         }
         // pathId is key.
-        private val byId = mutableMapOf<String,PathRecord>()
-        private val recordsById: Map<String, PathRecord> = byId
-        private val byKanji = mutableMapOf<String, MutableSet<String>>()
-        val pathIdByKanji : Map<String, Set<String>> = byKanji
+        private val byKanji = mutableMapOf<String, MutableMap<String, PathRecord>>()
+        val pathIdByKanji : Map<String, Map<String, PathRecord>> = byKanji
 
         fun getPathData(pathId: String): String {
-            val pathRecord = recordsById[pathId]!!
+            val kanji = pathId.codePointSplit().first()
+            val pathRecord = pathIdByKanji[kanji]?.get(pathId)
+            if (pathRecord == null)
+                throw RuntimeException("$TAG: Failed to find pathRecord:" +
+                        "$kanji->$pathId")
             val zipEntry = zipFile!!.getEntry(pathRecord.recordId)
             val recordLines = zipFile!!.getInputStream(zipEntry)
                 .readBytes()
                 .toString(Charset.forName("UTF-8"))
                 .split("\n")
-            val (offset, len, stroke_count) = pathRecord.selectors
+            val (offset, len) = pathRecord.selectors
             @SuppressLint("InlinedApi")
             val rv = recordLines.subList(offset, len + offset + 1)
                 .joinToString("\n")
@@ -87,7 +92,7 @@ class AnimatorInfo {
                         ([0-9a-fA-F]{2})    # length of path info in line feeds
                         ([0-9a-fA-F]{2})    # number of paths in record
                         """.trimIndent().toRegex(RegexOption.COMMENTS)
-                    byId.clear()
+                    byKanji.clear()
 
                     for (line in tocLines) {
                         if (line.startsWith("kvgVersion")) {
@@ -100,11 +105,11 @@ class AnimatorInfo {
                             throw RuntimeException("$TAG: Bad record: Failed to parse $line")
                         found.map {
                             val (pathId, kanji, a, b, stroke_count) = it.groupValues.takeLast(5)
-                            byId[pathId] = PathRecord(
-                                pathId, recordId,
-                                a.toInt(16), b.toInt(16), stroke_count.toInt(16)
+                            byKanji.getOrPut(kanji){ mutableMapOf() }[pathId] =
+                                PathRecord(pathId, recordId,
+                                a.toInt(16), b.toInt(16),
+                                    stroke_count.toInt(16)
                             )
-                            byKanji.getOrPut(kanji) { mutableSetOf() }.add(pathId)
                         }
                     }
                     initResults.value = true to "success: Found $zipFile"
