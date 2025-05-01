@@ -1,0 +1,12 @@
+https://coderwall.com/p/r09hoq/android-generate-release-debug-keystores
+http://developer.android.com/tools/publishing/app-signing.html#debugmode
+
+
+    Keystore name: "debug.keystore"
+    Keystore password: "android"
+    Key alias: "androiddebugkey"
+    Key password: "android"
+    CN: "CN=Android Debug,O=Android,C=US"
+
+
+$ keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000
