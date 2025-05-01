@@ -33,11 +33,8 @@ import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.GridView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import androidx.core.text.isDigitsOnly
 import androidx.core.text.toSpanned
@@ -46,25 +43,12 @@ import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
 import com.kana_tutor.animate.AnimatorInfo.Companion.indexedKanjiSort
 import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
-import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansBold
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansRegular
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
-import com.kana_tutor.utils.SFResult
-import com.kana_tutor.utils.baseName
 import com.kana_tutor.utils.codePointSplit
-import com.kana_tutor.utils.cpErrorMap
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
-import com.kana_tutor.utils.getUnzipFromRemote
-import com.kana_tutor.utils.getZipFromRemote
-import com.kana_tutor.utils.importZipObserved
-import com.kana_tutor.utils.uriCp
-import com.kana_tutor.utils.uriCpIoError
-import com.kana_tutor.utils.uriToFileName
-import com.kana_tutor.utils.zipToRemote
-import java.io.File
-
 
 private const val TAG = "MainActivity"
 
@@ -273,122 +257,11 @@ class MainActivity : AppCompatActivity() {
             displayModeTitle(R.string.display_theme, currentDisplayTheme.titleId)
         return true
     }
-    // the ActivityResultContracts "contract"
-    private val getAndUnzipFromRemote = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            getUnzipFromRemote(uri)
-        }
-    }
-    // the ActivityResultContracts "contract"
-    private val getZipFromRemote = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            getZipFromRemote(uri)
-        }
-    }
-    private val putZipToRemote = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/zip")
-    ) { uri ->
-        if (uri != null) {
-            try {
-                zipToRemote(uri)
-            }
-            catch (e: Exception) {
-                Log.d(TAG, "Exception in zipToRemote: $e")
-            }
-        }
-    }
-    private fun updateAnimationsFiles() :Boolean{
-        val updateId = "updateAnimationsFiles"
-        importZipObserved.value.clear()
-        importZipObserved.value.id = updateId
-        val currentAniFiles = externalStorageRoot.list()!!.filter{
-            it.contains("""^kvg.*\.(toc|zip)$""".toRegex()) &&
-                    File(externalStorageRoot, it).isFile
-        }
-        currentAniFiles.map{
-            if (!File(externalStorageRoot, it).delete())
-                throw RuntimeException("updateAnimationsFiles: " +
-                        "Unable to delete($it)")
-        }
-        importZipObserved.value = SFResult(updateId)
-        getZipFromRemote.launch(arrayOf("application/zip"))
-        importZipObserved.observe { result ->
-            Log.d(TAG, result.from)
-            if (result.id == updateId && result.success) {
-                AnimatorInfo.initialize()
-            }
-        }
-        return true
-    }
-    private val getTxtFromRemote = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uriIn ->
-        val externFile = File(uriToFileName(uriIn!!))
-        val uriOut = externFile.toUri()
-        val bytesRead = uriCp(uriIn, uriOut)
-        val mess = if (bytesRead < 0)
-            "${cpErrorMap[bytesRead]}${uriCpIoError}"
-        else
-            "Copied $bytesRead bytes from ${
-                uriIn.baseName()
-            } to ${uriOut.baseName()}"
-        Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
-    }
-    private val putTxtToRemote = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
-    ) { uriOut ->
-        if (uriOut != null) {
-            val externFile = uriToFileName(uriOut)
-            val uriIn = externFile.toUri()
-            val bytesRead = uriCp(uriIn, uriOut)
-            val mess = if (bytesRead < 0)
-                "${cpErrorMap[bytesRead]}${uriCpIoError}"
-            else
-                "Copied $bytesRead bytes from ${uriIn.baseName()
-                } to ${uriOut.baseName()}"
-            Toast.makeText(this, mess, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun importExport(menuItem: MenuItem):Boolean {
-        with (menuItem) {
-            Log.d(
-                TAG, "menuItem:0x%08x:\"%s\"".format(
-                    itemId, title
-                ))
-            when (itemId) {
-                R.id.import_and_unzip ->
-                    getAndUnzipFromRemote.launch(arrayOf("application/zip"))
-                R.id.export_zip -> {
-                    Log.d(TAG, "Export Zip")
-                    putZipToRemote.launch("File.zip")
-                }
-                R.id.import_zip -> {
-                    importZipObserved.value = SFResult("import_zip")
-                    getZipFromRemote.launch(arrayOf("application/zip"))
-                }
-                R.id.import_file ->
-                    getTxtFromRemote.launch(arrayOf("text/plain"))
-                R.id.export_file ->
-                    putTxtToRemote.launch("File.txt")
-            }
-        }
-        return true
-    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
-            R.id.export_file, R.id.import_file,
-            R.id.zip_and_export, R.id.import_and_unzip,
-            R.id.export_zip, R.id.import_zip ->
-                    importExport(item)
-            R.id.update_ani_zip -> updateAnimationsFiles()
             R.id.build_info_item -> return displayBuildInfo()
             R.id.display_dark_theme  -> {
                 selectDisplayTheme(DisplayTheme.Dark)

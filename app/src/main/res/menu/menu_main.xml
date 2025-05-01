@@ -3,57 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.kana_tutor.app_template.MainActivity">
     <item
-        android:checkable="false"
-        android:title="@string/external_file_operations">
-        <menu>
-            <group android:id="@+id/import_export_group" >
-                <item
-                    android:title="@string/export_local"
-                    android:checkable="false">
-                    <menu>
-                        <group android:id="@+id/export_group" >
-                            <item
-                                android:id="@+id/export_zip"
-                                android:orderInCategory="3"
-                                android:title="@string/zip_file"/>
-                            <item
-                                android:id="@+id/zip_and_export"
-                                android:orderInCategory="3"
-                                android:title="@string/zip_and_export"/>
-                            <item
-                                android:id="@+id/export_file"
-                                android:orderInCategory="3"
-                                android:title="@string/a_file"/>
-                        </group>
-                    </menu>
-                </item>
-                <item
-                    android:title="@string/import_external"
-                    android:checkable="false">
-                    <menu>
-                        <group android:id="@+id/import_group" >
-                            <item
-                                android:id="@+id/import_zip"
-                                android:orderInCategory="3"
-                                android:title="@string/zip_file"/>
-                            <item
-                                android:id="@+id/import_and_unzip"
-                                android:orderInCategory="3"
-                                android:title="@string/import_unzip"/>
-                            <item
-                                android:id="@+id/import_file"
-                                android:orderInCategory="3"
-                                android:title="@string/a_file"/>
-                        </group>
-                    </menu>
-                </item>
-                <item
-                        android:id="@+id/update_ani_zip"
-                        android:title="@string/update_animation_zip"/>
-            </group>
-        </menu>
-    </item>
-    <item
     android:id="@+id/select_display_theme"
     android:orderInCategory="4"
     android:title=""
