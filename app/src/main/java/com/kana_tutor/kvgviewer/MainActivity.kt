@@ -117,7 +117,6 @@ class MainActivity : AppCompatActivity() {
 
 
     private lateinit var selectorGrid: GridView
-    private lateinit var downloadPromptBtn : Button
     private lateinit var kanjiSelectEt: EditText
 
     class ViewHolder (
@@ -194,9 +193,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         selectorGrid = findViewById(R.id.animate_select_grid)
-        downloadPromptBtn = findViewById(R.id.downloae_prompt_btn)
-        downloadPromptBtn.setOnClickListener {
-            AnimatorInfo.initialize() }
 
         kanjiSelectEt = findViewById(R.id.kanji_select_et)
         kanjiSelectEt.setOnClickListener{ val et = it as EditText
@@ -235,43 +231,29 @@ class MainActivity : AppCompatActivity() {
         if (scrollState != null)
             selectorGrid.onRestoreInstanceState(scrollState)
 
-        AnimatorInfo.initResults.observe { val (success, mess) = it
-            Toast.makeText(this,
-                "AnimatorInfo init results:" +
-                        (if(success) "Success" else "FAIL") +
-                        "\n$mess",
-                Toast.LENGTH_LONG
-            ).show()
-            if (success) {
-                // sentString will not be empty iff the app was
-                // started as thr result of a "share" from
-                // another app.
-                @Suppress("NestedLambdaShadowedImplicitParameter")
-                if (sentString.isNotEmpty()) {
-                    val kanji = sentString.codePointSplit()
-                        .filter{pathIdByKanji.contains(it)}
-                        .toSet().sorted()
-                    // For a "shared" kanji string, tart the
-                    // animator with the first path record of
-                    // the first kanji we find.
-                    if (kanji.isNotEmpty()) {
-                        kanjiSelectEt.setText(sentString)
-                        val pathId = pathIdByKanji[kanji[0]]!!
-                            .keys.minOf { it }
-                        startAnimatorActivity(pathId)
-                    }
-                    sentString = ""
-                }
-                else gridAdapter.update(pathIdByKanji.keys)
-                downloadPromptBtn.visibility = View.GONE
+        // sentString will not be empty iff the app was
+        // started as the result of a "share" from
+        // another app.
+        if (sentString.isNotEmpty()) {
+            val kanji = sentString.codePointSplit()
+                .filter{pathIdByKanji.contains(it)}
+                .toSet().sorted()
+            // For a "shared" kanji string, tart the
+            // animator with the first path record of
+            // the first kanji we find.
+            if (kanji.isNotEmpty()) {
+                kanjiSelectEt.setText(sentString)
+                val pathId = pathIdByKanji[kanji[0]]!!
+                    .keys.minOf { it }
+                startAnimatorActivity(pathId)
             }
-            else
-                downloadPromptBtn.visibility = View.VISIBLE
-
-            val currentText = kanjiSelectEt.text.toString()
-            if (currentText.isNotEmpty()) gridAdapter.update(currentText)
-            else gridAdapter.update(pathIdByKanji.keys)
+            sentString = ""
         }
+        else gridAdapter.update(pathIdByKanji.keys)
+
+        val currentText = kanjiSelectEt.text.toString()
+        if (currentText.isNotEmpty()) gridAdapter.update(currentText)
+        else gridAdapter.update(pathIdByKanji.keys)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
