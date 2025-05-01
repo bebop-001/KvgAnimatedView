@@ -59,9 +59,9 @@ class AnimatorInfo {
             val byStrokeCount = mutableMapOf<Int,MutableSet<String>>()
             kanji.filter { pathIdByKanji.containsKey(it) }
                 .map { k ->
-                    val x: Collection<PathRecord> =
+                    val pathRecords: Collection<PathRecord> =
                         pathIdByKanji[k]!!.values
-                    val sc = x.map{it.stroke_count}.min()
+                    val sc = pathRecords.map{it.stroke_count}.min()
                     byStrokeCount.getOrPut(sc){ mutableSetOf()}
                         .add(k)
                 }
