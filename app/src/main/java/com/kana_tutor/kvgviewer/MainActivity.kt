@@ -47,6 +47,8 @@ import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
 import com.kana_tutor.animate.AnimatorInfo.Companion.indexedKanjiSort
 import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.externalStorageRoot
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansBold
+import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansRegular
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.SFResult
 import com.kana_tutor.utils.baseName
@@ -122,7 +124,6 @@ class MainActivity : AppCompatActivity() {
         var position: Int,
         var text: String
     )
-    lateinit var minchoTypeFace: Typeface
 
     inner class GridAdapter: BaseAdapter() {
         private val localList = mutableListOf<String>()
@@ -140,9 +141,13 @@ class MainActivity : AppCompatActivity() {
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
         override fun getCount(): Int = localList.size
-        override fun getItem(position: Int): String = localList[position]
-        override fun getItemId(position: Int): Long = localList[position].hashCode().toLong()
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        override fun getItem(position: Int): String =
+            localList[position]
+        override fun getItemId(position: Int): Long =
+            localList[position].hashCode().toLong()
+        override fun getView(
+            position: Int, convertView: View?, parent: ViewGroup?
+        ): View {
             var button = convertView as Button?
             if (button == null) {
                 val inflater = LayoutInflater.from(parent!!.context)
@@ -150,7 +155,7 @@ class MainActivity : AppCompatActivity() {
                     R.layout.animate_select_button,
                     parent,
                     false) as Button
-                button.setTypeface(minchoTypeFace, Typeface.BOLD)
+                button.setTypeface(notoSansBold, Typeface.BOLD)
                 button.setOnClickListener(OnClickListener { v ->
                     val text = (v as Button).text
                     if (pathIdByKanji.containsKey(text)) {
@@ -197,8 +202,7 @@ class MainActivity : AppCompatActivity() {
         kanjiSelectEt.setOnClickListener{ val et = it as EditText
             gridAdapter.update(et.text.toString())
         }
-
-        minchoTypeFace = Typeface.createFromAsset(assets, "fonts/HanaMinA.ttf")
+        kanjiSelectEt.setTypeface(notoSansRegular, Typeface.NORMAL)
 
         AnimatorInfo.initialize()
         // Check for code sent by another app using

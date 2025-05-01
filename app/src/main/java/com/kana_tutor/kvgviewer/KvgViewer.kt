@@ -3,6 +3,7 @@ package com.kana_tutor.kvgviewer
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Typeface
 import android.os.Environment
 import androidx.core.content.ContextCompat
 import java.io.File
@@ -12,6 +13,9 @@ class KvgViewer: Application() {
     companion object {
         lateinit var appContext: Context
         lateinit var appFilesDir: File
+
+        lateinit var notoSansBold: Typeface
+        lateinit var notoSansRegular: Typeface
 
         lateinit var externalStorageRoot: File
         lateinit var homeDir: File
@@ -24,6 +28,13 @@ class KvgViewer: Application() {
         appFilesDir = filesDir
 
         userPreferences = getSharedPreferences("$TAG.user_prefs", MODE_PRIVATE)
+
+        notoSansRegular =
+            Typeface.createFromAsset(assets,
+                "fonts/noto-sans.regular.ttf")
+        notoSansBold =
+            Typeface.createFromAsset(assets,
+                "fonts/noto-sans.bold.ttf")
 
         if (
             Environment.getExternalStorageState() in
