@@ -14,7 +14,7 @@
  * limitations under the License.
 -->
 <resources>
-    <string name="app_name">KvgViewer</string>
+    <string name="app_name">Kanji Animator</string>
 
     <!-- used by BuildInfo. -->
     <string name="build_info">Build Info…</string>
