@@ -19,6 +19,9 @@
     <color name="colorPrimaryDark">#3700B3</color>
     <color name="colorAccent">#03DAC5</color>
 
+    <!-- border color -->
+    <color name="Brown_1">#ffc14a0f</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
@@ -26,4 +29,5 @@
     <color name="red">#ffff0000</color>
     <color name="blue">#ff0000ff</color>
 
+    <color name="icon_bg">#ff63280b</color>
 </resources>

@@ -16,6 +16,7 @@
 
 package com.kana_tutor.kvgviewer
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -23,7 +24,7 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.text.Spanned
 import android.util.Log
-import android.view.LayoutInflater
+import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -35,9 +36,11 @@ import android.widget.EditText
 import android.widget.GridView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.Toolbar
 import androidx.core.text.HtmlCompat
 import androidx.core.text.isDigitsOnly
 import androidx.core.text.toSpanned
+import androidx.core.view.marginLeft
 import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
@@ -73,15 +76,15 @@ fun appDisplayTheme(): String =
         else -> "Other"
     }
 @Suppress("ObjectPropertyName")
-private var _currentDisplayTheme = DisplayTheme.valueOf(
+private var displayTheme = DisplayTheme.valueOf(
     userPreferences.getString("currentDisplayTheme", DisplayTheme.Dark.name)!!
 )
 val currentDisplayTheme: DisplayTheme
-    get() = _currentDisplayTheme
+    get() = displayTheme
 fun selectDisplayTheme(theme: DisplayTheme) {
     if (theme != currentDisplayTheme) {
         AppCompatDelegate.setDefaultNightMode(theme.displayMode)
-        _currentDisplayTheme = theme
+        displayTheme = theme
         userPreferences.edit().putString("currentDisplayTheme", theme.name).apply()
     }
     else {
@@ -103,11 +106,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectorGrid: GridView
     private lateinit var kanjiSelectEt: EditText
 
-    class ViewHolder (
-        var position: Int,
-        var text: String
-    )
-
+    @Suppress("RedundantSamConstructor")
     inner class GridAdapter: BaseAdapter() {
         private val localList = mutableListOf<String>()
         // Take what ever comes in, join to a string,update
@@ -123,6 +122,56 @@ class MainActivity : AppCompatActivity() {
         }
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
+        val INDEX = 0
+        val NORMAL = INDEX + 1
+        val MULTI_STYLE = NORMAL + 1
+        fun String.toType(): Int = when {
+                isDigitsOnly() -> INDEX
+                pathIdByKanji[this]!!.size > 1 -> MULTI_STYLE
+                else -> NORMAL
+            }
+        fun String.toButtonColor() : Int =
+            when(this.toType()) {
+                INDEX -> Color.RED
+                NORMAL -> if(currentDisplayTheme == DisplayTheme.Dark)
+                    Color.WHITE else Color.BLACK
+                else -> Color.GREEN
+            }
+        fun CharSequence.toButtonColor() =
+            this.toString().toButtonColor()
+        @Suppress("NAME_SHADOWING")
+        private fun ViewGroup.newButton(
+            text: String, position: Int
+        ): Button {
+            val button = Button(this.context)
+            with (button) {
+                this.text = text
+                setTextColor(text.toButtonColor())
+                setTypeface(notoSansBold, Typeface.BOLD)
+                setTextSize(
+                    TypedValue.COMPLEX_UNIT_PX,
+                    resources.getDimension(
+                        R.dimen.grid_btn_text_size)
+                )
+                setBackgroundResource(
+                    R.drawable.border_bg
+                )
+                setPadding(3,3,3,3)
+                setTypeface(notoSansBold, Typeface.BOLD)
+                setOnClickListener(OnClickListener { v ->
+                    val text = (v as Button).text
+                    if (pathIdByKanji.containsKey(text)) {
+                        val pathIds: Map<String, PathRecord> =
+                            pathIdByKanji[text]!!
+                        avgSelect(pathIds.keys) { pathId ->
+                            startAnimatorActivity(pathId)
+                        }
+                    }
+                })
+                tag = position
+            }
+            return button
+        }
         override fun getCount(): Int = localList.size
         override fun getItem(position: Int): String =
             localList[position]
@@ -133,40 +182,15 @@ class MainActivity : AppCompatActivity() {
         ): View {
             var button = convertView as Button?
             if (button == null) {
-                val inflater = LayoutInflater.from(parent!!.context)
-                button = inflater.inflate(
-                    R.layout.animate_select_button,
-                    parent,
-                    false) as Button
-                button.setTypeface(notoSansBold, Typeface.BOLD)
-                button.setOnClickListener(OnClickListener { v ->
-                    val text = (v as Button).text
-                    if (pathIdByKanji.containsKey(text)) {
-                        val pathIds: Map<String, PathRecord> =
-                            pathIdByKanji[text]!!
-                        avgSelect(pathIds.keys) { pathId ->
-                            startAnimatorActivity(pathId)
-                        }
-                    }
-                })
-            }
-            val itemText = getItem(position)
-            var vh = button.tag as ViewHolder?
-            if (vh == null) {
-                vh = ViewHolder(-1, itemText)
-                button.tag = vh
-            }
-            if (vh.position != position || vh.text != itemText) {
-                button.text = itemText
-                button.setTextColor(
-                    if (pathIdByKanji.containsKey(itemText))
-                        if (pathIdByKanji[itemText]!!.size == 1)
-                            Color.BLUE
-                        else Color.GREEN
-                    else if (itemText.isDigitsOnly())
-                        Color.RED
-                    else Color.GREEN
+                button = parent!!.newButton(
+                    getItem(position), position
                 )
+            }
+            else if (button.text != getItem(position) || button.tag != position) {
+                button.text = getItem(position)
+                button.setTextColor(
+                    button.text.toButtonColor())
+                button.tag = position
             }
             return button
         }
@@ -176,6 +200,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
+        AppCompatDelegate.setDefaultNightMode(displayTheme.displayMode)
+
         selectorGrid = findViewById(R.id.animate_select_grid)
 
         kanjiSelectEt = findViewById(R.id.kanji_select_et)

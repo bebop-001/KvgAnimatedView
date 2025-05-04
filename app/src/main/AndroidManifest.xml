@@ -10,8 +10,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:hardwareAccelerated="false"
-        android:theme="@style/AppTheme">
+        android:theme="@style/Theme.KanjiAnimator">
         <activity android:name=".MainActivity"
+            android:theme="@style/Theme.KanjiAnimator.NoActionBar"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
