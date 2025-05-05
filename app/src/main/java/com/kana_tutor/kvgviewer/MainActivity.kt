@@ -114,8 +114,10 @@ class MainActivity : AppCompatActivity() {
         // style, ad the kanji otherwise add all style keys
         // for the kanji
         fun update(newStuff: String) {
-            val kanji = newStuff.codePointSplit()
+            var kanji = newStuff.codePointSplit()
                 .toSet()
+            if (kanji.isEmpty())
+                kanji = pathIdByKanji.keys
             localList.clear()
             localList.addAll(indexedKanjiSort(kanji))
             notifyDataSetChanged()
