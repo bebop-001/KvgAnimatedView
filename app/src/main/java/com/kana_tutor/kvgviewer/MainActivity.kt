@@ -31,7 +31,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.View.OnClickListener
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -125,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         }
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
-        fun Context.avgSelect(selectableAvg: List<String>, animator: (String)->Unit) {
+        private fun Context.avgSelect(selectableAvg: List<String>, animator: (String)->Unit) {
             if (selectableAvg.size > 1) {
                 val alertDialog = AlertDialog.Builder(this)
                     .setTitle(getString(R.string.which_avg))
@@ -141,7 +140,7 @@ class MainActivity : AppCompatActivity() {
             }
             else animator.invoke(selectableAvg[0])
         }
-        fun Context.avgSelect(selectableAvg: Set<String>, animator: (String)->Unit) =
+        private fun Context.avgSelect(selectableAvg: Set<String>, animator: (String)->Unit) =
             avgSelect(selectableAvg.sortedDescending(), animator)
 
         private val INDEX = 0
@@ -222,36 +221,32 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        // for grid column recalculate...
+
+        // Calculate grid numColumns once layout is complete.
         findViewById<ConstraintLayout>(R.id.root_view)
-            .viewTreeObserver.addOnGlobalLayoutListener(
-                object : ViewTreeObserver.OnGlobalLayoutListener {
-                    override fun onGlobalLayout() {
-                        val buttpn = selectorGrid.getChildAt(0)
-                        /*
-                            On LG 322DL:
-                            viewTreeObserver:
-                                selectorGrid: 6:720 x 1138
-                                button: 84 x 112
-                            On Samsung J7
-                            viewTreeObserver:
-                                selectorGrid: 6:720 x 544
-                                button: 96 x 111
-                            On Samsung T-820
-                            viewTreeObserver:
-                                selectorGrid: 6:1536 x 1783
-                                button: 96 x 247
-                         */
-                        Log.d(TAG, "viewTreeObserver: \n\t" +
-                            "selectorGrid: ${selectorGrid.numColumns}:" +
-                                "${selectorGrid.measuredWidth} x" +
-                                " ${selectorGrid.measuredHeight}\n\t" +
-                            "button: ${buttpn.measuredHeight} x" +
-                                        " ${buttpn.measuredWidth}"
-                        )
-                    }
-                }
-            )
+            .viewTreeObserver.addOnGlobalLayoutListener {
+                // button width is set by the grid view.  button
+                // height is determined by button padding, margins,
+                // etc.  Ideally we want a button aspect ratio of 1.2x1.
+                // based on that, calculate the width (assuming it is good first
+                // try through) and calculate a number of columns.  If the
+                // current number of columns != the calculated value, select
+                // the new value.
+                val gridButton = selectorGrid.getChildAt(0)
+                val maxWidth = gridButton.measuredWidth * selectorGrid.numColumns
+                val desiredButtonWidth = (1.2 * gridButton.measuredHeight + 0.5).toInt()
+                val numColumns = maxWidth / desiredButtonWidth
+                if (selectorGrid.numColumns != numColumns)
+                    selectorGrid.numColumns = numColumns
+                Log.d(
+                    TAG, "viewTreeObserver: \n\t" +
+                    "selectorGrid: ${selectorGrid.numColumns}:" +
+                    "${selectorGrid.measuredWidth} x" +
+                    " ${selectorGrid.measuredHeight}\n\t" +
+                    "button: ${gridButton.measuredWidth} x" +
+                    " ${gridButton.measuredHeight}"
+                )
+            }
 
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
