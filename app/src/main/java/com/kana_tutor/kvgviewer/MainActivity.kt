@@ -53,7 +53,7 @@ import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.codePointSplit
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
-import com.kana_tutor.utils.webviewAlert
+import com.kana_tutor.utils.webviewAlertDialog
 
 private const val TAG = "MainActivity"
 
@@ -316,7 +316,7 @@ class MainActivity : AppCompatActivity() {
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.build_info_item -> return displayBuildInfo()
-            R.id.about_app -> webviewAlert(
+            R.id.about_app -> webviewAlertDialog(
                 "file:///android_asset" +
                         "/www/about_app.html",
                     appMenuTitle)

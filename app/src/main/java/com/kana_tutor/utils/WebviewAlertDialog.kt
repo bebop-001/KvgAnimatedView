@@ -28,20 +28,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.kana_tutor.kvgviewer.R
 
-fun Activity.webViewAlert (webContainer : ConstraintLayout, title:String) {
-    // this as context necessary or you can get "need app compatibwebContainerle..."
-    // app.applicationContext or app.baseContext won't work.
-    val dialog = AlertDialog.Builder(this as Context)
-        .setView(webContainer)
-        .setCancelable(false)
-        .create()
-    if (title.isNotEmpty()) dialog.setTitle(title)
-    dialog.show()
-    webContainer.findViewById<Button>(R.id.done_btn).setOnClickListener {
-        dialog.cancel()
-    }
-}
-fun Activity.webviewAlert(uri:String, title:String = "") : Boolean{
+fun Activity.webviewAlertDialog(uri:String, title:String = "") : Boolean{
     val webContainer = layoutInflater.inflate(
         R.layout.web_dialog, null) as ConstraintLayout
     val webFrame = webContainer.findViewById<FrameLayout>(R.id.webframe)
@@ -76,9 +63,20 @@ fun Activity.webviewAlert(uri:String, title:String = "") : Boolean{
             webView.goBack()
         }
     }
-    webViewAlert(webContainer, title)
+    // this as context necessary or you can get "need app compatible..."
+    // app.applicationContext or app.baseContext won't work.
+    val dialog = AlertDialog.Builder(this as Context)
+        .setView(webContainer)
+        .setCancelable(false)
+        .create()
+    if (title.isNotEmpty()) dialog.setTitle(title)
+    dialog.show()
+    webContainer.findViewById<Button>(R.id.done_btn).setOnClickListener {
+        dialog.cancel()
+    }
     return true
 }
-fun Activity.webviewAlert(uri:String, resId:Int) : Boolean{
-    return webviewAlert(uri, getString(resId))
+@Suppress("unused")
+fun Activity.webviewAlertDialog(uri:String, resId:Int) : Boolean{
+    return webviewAlertDialog(uri, getString(resId))
 }
