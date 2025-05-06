@@ -31,6 +31,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.View.OnClickListener
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -39,6 +40,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.text.HtmlCompat
 import androidx.core.text.isDigitsOnly
 import androidx.core.text.toSpanned
@@ -220,6 +222,36 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // for grid column recalculate...
+        findViewById<ConstraintLayout>(R.id.root_view)
+            .viewTreeObserver.addOnGlobalLayoutListener(
+                object : ViewTreeObserver.OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        val buttpn = selectorGrid.getChildAt(0)
+                        /*
+                            On LG 322DL:
+                            viewTreeObserver:
+                                selectorGrid: 6:720 x 1138
+                                button: 84 x 112
+                            On Samsung J7
+                            viewTreeObserver:
+                                selectorGrid: 6:720 x 544
+                                button: 96 x 111
+                            On Samsung T-820
+                            viewTreeObserver:
+                                selectorGrid: 6:1536 x 1783
+                                button: 96 x 247
+                         */
+                        Log.d(TAG, "viewTreeObserver: \n\t" +
+                            "selectorGrid: ${selectorGrid.numColumns}:" +
+                                "${selectorGrid.measuredWidth} x" +
+                                " ${selectorGrid.measuredHeight}\n\t" +
+                            "button: ${buttpn.measuredHeight} x" +
+                                        " ${buttpn.measuredWidth}"
+                        )
+                    }
+                }
+            )
 
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
