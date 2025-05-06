@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Steven Smith kana-tutor.com
+ * Copyright 2025 Steven Smith kana-tutor.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 package com.kana_tutor.kvgviewer
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -34,6 +35,7 @@ import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.GridView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
@@ -121,6 +123,25 @@ class MainActivity : AppCompatActivity() {
         }
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
+        fun Context.avgSelect(selectableAvg: List<String>, animator: (String)->Unit) {
+            if (selectableAvg.size > 1) {
+                val alertDialog = AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.which_avg))
+                    .setSingleChoiceItems(
+                        selectableAvg.toTypedArray(),
+                        0
+                    ) /* no initial selection */
+                    { dialog, which ->
+                        dialog.dismiss()
+                        animator.invoke(selectableAvg[which])
+                    }
+                alertDialog.show()
+            }
+            else animator.invoke(selectableAvg[0])
+        }
+        fun Context.avgSelect(selectableAvg: Set<String>, animator: (String)->Unit) =
+            avgSelect(selectableAvg.sortedDescending(), animator)
+
         private val INDEX = 0
         private val NORMAL = INDEX + 1
         private val MULTI_STYLE = NORMAL + 1
