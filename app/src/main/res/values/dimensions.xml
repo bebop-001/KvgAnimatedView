@@ -15,5 +15,5 @@
  * limitations under the License.
 -->
 <resources>
-    <dimen name="grid_btn_text_size">30sp</dimen>
+    <dimen name="grid_btn_text_size">20sp</dimen>
 </resources>

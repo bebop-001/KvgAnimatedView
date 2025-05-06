@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
                 setBackgroundResource(
                     R.drawable.border_bg
                 )
-                setPadding(3,3,3,3)
+                setPadding(1,1,1,1)
                 setTypeface(notoSansBold, Typeface.BOLD)
                 setOnClickListener(OnClickListener { v ->
                     val text = (v as Button).text
