@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("PrivatePropertyName")
 
 package com.kana_tutor.kvgviewer
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -40,7 +40,6 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.text.HtmlCompat
 import androidx.core.text.isDigitsOnly
 import androidx.core.text.toSpanned
-import androidx.core.view.marginLeft
 import com.kana_tutor.animate.AnimatorActivity
 import com.kana_tutor.animate.AnimatorInfo
 import com.kana_tutor.animate.AnimatorInfo.Companion.PathRecord
@@ -52,6 +51,7 @@ import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
 import com.kana_tutor.utils.codePointSplit
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
+import com.kana_tutor.utils.webviewAlert
 
 private const val TAG = "MainActivity"
 
@@ -75,7 +75,6 @@ fun appDisplayTheme(): String =
         AppCompatDelegate.MODE_NIGHT_UNSPECIFIED -> "MODE_NIGHT_UNSPECIFIED"
         else -> "Other"
     }
-@Suppress("ObjectPropertyName")
 private var displayTheme = DisplayTheme.valueOf(
     userPreferences.getString("currentDisplayTheme", DisplayTheme.Dark.name)!!
 )
@@ -94,8 +93,6 @@ fun selectDisplayTheme(theme: DisplayTheme) {
 }
 val uiThemeIsDark: Boolean
     get() = currentDisplayTheme == DisplayTheme.Dark
-
-
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -124,22 +121,22 @@ class MainActivity : AppCompatActivity() {
         }
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
-        val INDEX = 0
-        val NORMAL = INDEX + 1
-        val MULTI_STYLE = NORMAL + 1
-        fun String.toType(): Int = when {
+        private val INDEX = 0
+        private val NORMAL = INDEX + 1
+        private val MULTI_STYLE = NORMAL + 1
+        private fun String.toType(): Int = when {
                 isDigitsOnly() -> INDEX
                 pathIdByKanji[this]!!.size > 1 -> MULTI_STYLE
                 else -> NORMAL
             }
-        fun String.toButtonColor() : Int =
+        private fun String.toButtonColor() : Int =
             when(this.toType()) {
                 INDEX -> Color.RED
                 NORMAL -> if(currentDisplayTheme == DisplayTheme.Dark)
                     Color.WHITE else Color.BLACK
                 else -> Color.GREEN
             }
-        fun CharSequence.toButtonColor() =
+        private fun CharSequence.toButtonColor() =
             this.toString().toButtonColor()
         @Suppress("NAME_SHADOWING")
         private fun ViewGroup.newButton(
@@ -277,6 +274,7 @@ class MainActivity : AppCompatActivity() {
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
+    private var appMenuTitle = ""
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         super.onPrepareOptionsMenu(menu)
         fun displayModeTitle(groupId: Int, itemResId: Int): Spanned =
@@ -287,6 +285,8 @@ class MainActivity : AppCompatActivity() {
         menu.getMenuItem(currentDisplayTheme.menuId)!!.isChecked = true
         menu.getMenuItem(R.id.select_display_theme)!!.title =
             displayModeTitle(R.string.display_theme, currentDisplayTheme.titleId)
+        appMenuTitle = getString(R.string.about_app, getString(R.string.app_name))
+        menu.getMenuItem(R.id.about_app)!!.title = appMenuTitle
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -295,6 +295,10 @@ class MainActivity : AppCompatActivity() {
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.build_info_item -> return displayBuildInfo()
+            R.id.about_app -> webviewAlert(
+                "file:///android_asset" +
+                        "/www/about_app.html",
+                    appMenuTitle)
             R.id.display_dark_theme  -> {
                 selectDisplayTheme(DisplayTheme.Dark)
                 true

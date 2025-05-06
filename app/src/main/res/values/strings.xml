@@ -29,6 +29,8 @@
         Build type:   %9$s
     </string>
 
+    <string name="about_app">About %1$s</string>
+
     <string name="display_theme">
         <![CDATA[Display mode: <b><font color=#00FF00>]]>%1$s
         <![CDATA[</font></b>]]></string>
@@ -45,5 +47,6 @@
     <string name="select_kanji">select kanji</string>
     <string name="load_prompt">Press when kvg paths file is loaded</string>
     <string name="which_avg">Select a kanji style</string>
+    <string name="go_back"><![CDATA[<<]]></string>
 
 </resources>

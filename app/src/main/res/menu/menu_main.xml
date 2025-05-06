@@ -22,6 +22,11 @@
     </menu>
 </item>
     <item
+        android:id="@+id/about_app"
+        android:orderInCategory="5"
+        android:title="@string/about_app"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/build_info_item"
         android:orderInCategory="5"
         android:title="@string/build_info"
