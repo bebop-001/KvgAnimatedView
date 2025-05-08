@@ -75,7 +75,7 @@
         android:paddingStart="3dp"
         android:fastScrollAlwaysVisible="true"
         android:scrollbarStyle="outsideInset"
-        android:scrollbarSize="5dp"and
+        android:scrollbarSize="5dp"
         android:scrollbarThumbVertical="@color/green"
         android:fadeScrollbars="false"
         app:layout_constraintBottom_toBottomOf="parent"
