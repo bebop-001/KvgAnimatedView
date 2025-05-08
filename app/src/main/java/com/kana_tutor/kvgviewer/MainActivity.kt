@@ -265,6 +265,11 @@ class MainActivity : AppCompatActivity() {
                 // try through) and calculate a number of columns.  If the
                 // current number of columns != the calculated value, select
                 // the new value.
+                if (selectorGrid.childCount == 0)
+                    return@addOnGlobalLayoutListener
+                val numRows = selectorGrid.childCount / selectorGrid.numColumns
+                if (numRows == 0)
+                    return@addOnGlobalLayoutListener
                 val gridButton = selectorGrid.getChildAt(0)
                 val maxWidth = gridButton.measuredWidth * selectorGrid.numColumns
                 val desiredButtonWidth = (1.2 * gridButton.measuredHeight + 0.5).toInt()
