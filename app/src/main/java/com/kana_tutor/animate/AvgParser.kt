@@ -25,11 +25,13 @@ class SvgConvertException(message:String) : Exception (message)
 private const val TAG = "KvgStrokedChar"
 @Suppress("unused")
 class KvgStrokedChar (pathRecord: String) {
+    companion object {
+        var strokedChar = ""
+    }
     private var sFile = ""
     val svgFile:String get() = sFile
     private var aFile = ""
     val avgFile: String get() = aFile
-    private var renderChar = ""
     private var renderStyle = ""
     // width/height
     lateinit var dimensions : Pair<Float,Float>
@@ -238,7 +240,7 @@ class KvgStrokedChar (pathRecord: String) {
                 "N" -> {
                     val (c, s) = """(.)\.*([^.]+])*.avg""".toRegex()
                         .find(arg)!!.groupValues.takeLast(2)
-                    renderChar = c; renderStyle = s
+                    strokedChar = c; renderStyle = s
                     aFile = arg
                 }
                 "W" -> {// dimensions
@@ -273,7 +275,7 @@ class KvgStrokedChar (pathRecord: String) {
                     " $annotationsSize annotations")
         return arrayOf(
             "N$sFile",
-            "C$renderChar",
+            "C$strokedChar",
             "W" + dimensions.toList().joinToString(","),
             "path count: $pathsSize",
             ""

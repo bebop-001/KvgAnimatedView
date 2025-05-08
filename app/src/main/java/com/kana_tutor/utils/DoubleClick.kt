@@ -1,45 +1,44 @@
 package com.kana_tutor.utils
 
 import android.os.Handler
+import android.os.Looper
 import android.view.View
 
+@Suppress("unused")
+private const val TAG = "DoubleClick"
+private var id = 0
 class DoubleClick (
-    val onSingleClick: View.OnClickListener? = null,
-    val onDoubleClick: ((View) ->Unit)? = null,
-    val onLongClick: ((View) ->Unit)? = null,
+    private var singleClickListener: ((View, Any?) ->Unit)? = null,
+    private var doubleClickListener: ((View, Any?) ->Unit)? = null,
+    private var clientData: Any? = null
 ){
-    val validator : Set<String>? = (v.tag as ViewHolder).validator
-    if (v is Button) {
-        // this is for the radical selected kanji radicals view.
-        // When view-holder is created a validator is supplied that
-        // filters selectable radicals. Without this, you can end up
-        // with an empty rad-select view.
-        // Use view holder kanji for filter rather than button kanji
-        // because some radicals use image to represent the radical kanji.
-        if (validator != null && !validator.contains(this.kanji)) return
-        else if (v.text.contains("^\\d+$".toRegex())) return
-    }
-    val runnable : () -> Unit  = fun () {
-        if (isActive) {
-            isActive = false
-            if (isSingleClick) {
-                doubleClickListener.onSingleClick(v, this)
-            }
-            else {
-                doubleClickListener.onDoubleClick(v, this)
-            }
-            isSingleClick = true
+    init{ id++ }
+    private var isActive = false
+    private lateinit var scHandler : Handler
+    private var clickCounter = 0
+    private val isSingleClick: Boolean
+        get() = clickCounter == 1
+
+    @Suppress("PrivatePropertyName")
+    private val DOUBLE_CLICK_TIME = 350L // milliseconds
+    fun onClick (view: View) {
+        clickCounter++
+        val runnable: () -> Unit = fun() {
+            if (isSingleClick)
+                singleClickListener?.invoke(view, clientData)
+            else
+                doubleClickListener?.invoke(view, clientData)
         }
-    }
-    if (isActive) {
-        h.removeCallbacks(runnable)
-        isSingleClick = false
-        runnable.invoke()
-    }
-    else {
-        isActive = true
-        // Start a timer to catch the single-click case.
-        h = Handler(Looper.getMainLooper())
-        h.postDelayed(runnable, DOUBLE_CLICK_TIME)
+        if (isActive) {
+            scHandler.removeCallbacks(runnable)
+            runnable.invoke()
+            isActive = false
+            clickCounter = 0
+        }
+        else {
+            isActive = true
+            scHandler = Handler(Looper.getMainLooper())
+            scHandler.postDelayed(runnable, DOUBLE_CLICK_TIME)
+        }
     }
 }

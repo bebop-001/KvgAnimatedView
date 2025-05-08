@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("PrivatePropertyName")
+@file:Suppress("PrivatePropertyName", "UNUSED_ANONYMOUS_PARAMETER")
 
 package com.kana_tutor.kvgviewer
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -35,6 +38,7 @@ import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.GridView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -51,6 +55,7 @@ import com.kana_tutor.animate.AnimatorInfo.Companion.pathIdByKanji
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansBold
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.notoSansRegular
 import com.kana_tutor.kvgviewer.KvgViewer.Companion.userPreferences
+import com.kana_tutor.utils.DoubleClick
 import com.kana_tutor.utils.codePointSplit
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
@@ -97,14 +102,23 @@ fun selectDisplayTheme(theme: DisplayTheme) {
 val uiThemeIsDark: Boolean
     get() = currentDisplayTheme == DisplayTheme.Dark
 
+
 class MainActivity : AppCompatActivity() {
     companion object {
         private var scrollState: Parcelable? = null
     }
-
-
     private lateinit var selectorGrid: GridView
     private lateinit var kanjiSelectEt: EditText
+
+    fun copyToClipboard(kanji: String) {
+        val cb = this.getSystemService(Context.CLIPBOARD_SERVICE)
+                as ClipboardManager
+        val clip = ClipData.newPlainText(
+            ClipDescription.MIMETYPE_TEXT_PLAIN, kanji
+        )
+        cb.setPrimaryClip(clip)
+        Toast.makeText(this, "Copied $kanji to clipboard", Toast.LENGTH_LONG).show()
+    }
 
     @Suppress("RedundantSamConstructor")
     inner class GridAdapter: BaseAdapter() {
@@ -165,7 +179,25 @@ class MainActivity : AppCompatActivity() {
             text: String, position: Int
         ): Button {
             val button = Button(this.context)
+            val clickHandler = DoubleClick(
+                clientData = position,
+                singleClickListener = { v, cd ->
+                    val text = (v as Button).text
+                    if (pathIdByKanji.containsKey(text)) {
+                        val pathIds: Map<String, PathRecord> =
+                            pathIdByKanji[text]!!
+                        avgSelect(pathIds.keys) { pathId ->
+                            startAnimatorActivity(pathId)
+                        }
+                    }
+                },
+                doubleClickListener = {v, cd ->
+                    copyToClipboard((v as Button).text.toString())
+                }
+            )
+            button.tag = clickHandler
             with (button) {
+                button.tag = clickHandler
                 this.text = text
                 setTextColor(text.toButtonColor())
                 setTypeface(notoSansBold, Typeface.BOLD)
@@ -181,6 +213,7 @@ class MainActivity : AppCompatActivity() {
                 setTypeface(notoSansBold, Typeface.BOLD)
                 setOnClickListener(OnClickListener { v ->
                     val text = (v as Button).text
+                    Log.d(TAG, "onClick:$text")
                     if (pathIdByKanji.containsKey(text)) {
                         val pathIds: Map<String, PathRecord> =
                             pathIdByKanji[text]!!
@@ -189,8 +222,8 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 })
-                tag = position
             }
+            button.setOnClickListener { v -> clickHandler.onClick(v) }
             return button
         }
         override fun getCount(): Int = localList.size

@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
+@file:Suppress("UNUSED_ANONYMOUS_PARAMETER")
+
 package com.kana_tutor.animate
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.ContextMenu
@@ -27,6 +33,7 @@ import android.view.View
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
 import com.kana_tutor.kvgviewer.R
+import com.kana_tutor.utils.DoubleClick
 
 @Suppress("unused")
 private const val TAG = "AnimatorActivity"
@@ -40,6 +47,16 @@ class AnimatorActivity : Activity() {
     companion object {
         private var showSpeedToast = true
         private var pathId: String = ""
+    }
+
+    private fun copyToClipboard(kanji: String) {
+        val cb = this.getSystemService(Context.CLIPBOARD_SERVICE)
+                as ClipboardManager
+        val clip = ClipData.newPlainText(
+            ClipDescription.MIMETYPE_TEXT_PLAIN, kanji
+        )
+        cb.setPrimaryClip(clip)
+        Toast.makeText(this, "Copied $kanji to clipboard", Toast.LENGTH_LONG).show()
     }
 
     private var animateSpeed = ANIMATE_NORMAL
@@ -57,11 +74,19 @@ class AnimatorActivity : Activity() {
         animatorView = findViewById(R.id.animator_view)
         with(animatorView) {
             setAnimateRenderRate(animateSpeed)
-            setOnClickListener {
-                // Restart the animation.
-                resetPaths = true
-                strokePathCounter = 0
-                animatorView.invalidate()
+            val dc = DoubleClick(
+                singleClickListener = { v, cd ->
+                    // Restart the animation.
+                    resetPaths = true
+                    strokePathCounter = 0
+                    animatorView.invalidate()
+                },
+                doubleClickListener = { v, cd ->
+                    copyToClipboard(KvgStrokedChar.strokedChar)
+                }
+            )
+            setOnClickListener {v ->
+                dc.onClick(v)
             }
         }
         // If user touches screen outside of the animate view, exit.
