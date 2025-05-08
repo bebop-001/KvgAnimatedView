@@ -58,6 +58,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:ignore="Autofill,TextFields" />
 
+    <!-- Note: numColumns is set to 1 here then calculated
+         and reset when layout is completed and we know the
+         actual measured width of the view and button size.  -->
     <GridView
         android:id="@+id/animate_select_grid"
         android:layout_width="match_parent"
@@ -65,14 +68,14 @@
         android:layout_marginTop="3dp"
         android:layout_marginBottom="3dp"
         android:background="@drawable/border_bg"
-        android:numColumns="5"
+        android:numColumns="1"
         android:paddingEnd="15dp"
         android:paddingTop="3dp"
         android:paddingBottom="3dp"
         android:paddingStart="3dp"
         android:fastScrollAlwaysVisible="true"
         android:scrollbarStyle="outsideInset"
-        android:scrollbarSize="5dp"
+        android:scrollbarSize="5dp"and
         android:scrollbarThumbVertical="@color/green"
         android:fadeScrollbars="false"
         app:layout_constraintBottom_toBottomOf="parent"

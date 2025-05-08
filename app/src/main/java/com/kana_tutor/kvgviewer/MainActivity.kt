@@ -265,25 +265,24 @@ class MainActivity : AppCompatActivity() {
                 // try through) and calculate a number of columns.  If the
                 // current number of columns != the calculated value, select
                 // the new value.
-                if (selectorGrid.childCount == 0)
-                    return@addOnGlobalLayoutListener
-                val numRows = selectorGrid.childCount / selectorGrid.numColumns
-                if (numRows == 0)
-                    return@addOnGlobalLayoutListener
-                val gridButton = selectorGrid.getChildAt(0)
-                val maxWidth = gridButton.measuredWidth * selectorGrid.numColumns
-                val desiredButtonWidth = (1.2 * gridButton.measuredHeight + 0.5).toInt()
-                val numColumns = maxWidth / desiredButtonWidth
-                if (selectorGrid.numColumns != numColumns)
-                    selectorGrid.numColumns = numColumns
-                Log.d(
-                    TAG, "viewTreeObserver: \n\t" +
-                    "selectorGrid: ${selectorGrid.numColumns}:" +
-                    "${selectorGrid.measuredWidth} x" +
-                    " ${selectorGrid.measuredHeight}\n\t" +
-                    "button: ${gridButton.measuredWidth} x" +
-                    " ${gridButton.measuredHeight}"
-                )
+                with (selectorGrid) {
+                    val numRows = if(childCount == 0) 0 else  (childCount/ numColumns) + 1
+                    if (numRows > 1) {
+                        val gridButton = getChildAt(0)
+                        val maxWidth = gridButton.measuredWidth * numColumns
+                        val desiredButtonWidth = (1.2 * gridButton.measuredHeight + 0.5).toInt()
+                        val desiredNumColumns = maxWidth / desiredButtonWidth
+                        if (desiredNumColumns != numColumns)
+                            numColumns = desiredNumColumns
+                        Log.d(
+                            TAG, "viewTreeObserver: \n\t" +
+                            "selectorGrid: ${numColumns}:" +
+                            "$measuredWidth x $measuredHeight\n\t" +
+                            "button: ${gridButton.measuredWidth} x" +
+                            " ${gridButton.measuredHeight}"
+                        )
+                    }
+                }
             }
 
         val toolbar: Toolbar = findViewById(R.id.toolbar)
