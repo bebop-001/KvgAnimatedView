@@ -28,7 +28,6 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.text.Spanned
 import android.util.Log
-import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -59,6 +58,8 @@ import com.kana_tutor.utils.DoubleClick
 import com.kana_tutor.utils.codePointSplit
 import com.kana_tutor.utils.displayBuildInfo
 import com.kana_tutor.utils.getMenuItem
+import com.kana_tutor.utils.pxToSp
+import com.kana_tutor.utils.selectTypeSize
 import com.kana_tutor.utils.webviewAlertDialog
 
 private const val TAG = "MainActivity"
@@ -138,6 +139,13 @@ class MainActivity : AppCompatActivity() {
         }
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
+        // unit = dp
+        var buttonTextSize: Float = userPreferences.getFloat("buttonTextSize", 25.0f)
+            set(newVal) {
+                userPreferences.edit().putFloat("buttonTextSize", newVal).apply()
+                notifyDataSetChanged()
+                field = newVal
+            }
         private fun Context.avgSelect(selectableAvg: List<String>, animator: (String)->Unit) {
             if (selectableAvg.size > 1) {
                 val alertDialog = AlertDialog.Builder(this)
@@ -201,11 +209,7 @@ class MainActivity : AppCompatActivity() {
                 this.text = text
                 setTextColor(text.toButtonColor())
                 setTypeface(notoSansBold, Typeface.BOLD)
-                setTextSize(
-                    TypedValue.COMPLEX_UNIT_PX,
-                    resources.getDimension(
-                        R.dimen.grid_btn_text_size)
-                )
+                textSize = buttonTextSize
                 setBackgroundResource(
                     R.drawable.border_bg
                 )
@@ -240,8 +244,12 @@ class MainActivity : AppCompatActivity() {
                     getItem(position), position
                 )
             }
-            else if (button.text != getItem(position) || button.tag != position) {
+            else if (button.text != getItem(position)
+                    || button.tag != position
+                    || button.textSize != buttonTextSize
+                ) {
                 button.text = getItem(position)
+                button.textSize = buttonTextSize
                 button.setTextColor(
                     button.text.toButtonColor())
                 button.tag = position
@@ -392,6 +400,19 @@ class MainActivity : AppCompatActivity() {
                 selectDisplayTheme(DisplayTheme.Light)
                 true
             }
+            R.id.select_font_size -> {
+                val newSp = selectTypeSize(
+                    gridAdapter.buttonTextSize.pxToSp().toInt(),
+                    -4..4 // allowed sp range
+                )
+                Log.d(TAG, "New font size: $newSp")
+            /*
+                fontChangeListener = {fontSize: Int ->
+                    gridAdapter.buttonTextSize
+             */
+                true
+            }
+
             else -> {
                 Log.d(TAG, "Unexpected menuItem:" +
                         "0x%08x:\"%s\"".format(

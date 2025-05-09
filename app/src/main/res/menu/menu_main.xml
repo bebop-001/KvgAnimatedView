@@ -22,6 +22,12 @@
     </menu>
 </item>
     <item
+        android:id="@+id/select_font_size"
+        android:orderInCategory="99"
+        android:title="@string/select_font_size"
+        app:showAsAction="never"
+        />
+    <item
         android:id="@+id/about_app"
         android:orderInCategory="5"
         android:title="@string/about_app"

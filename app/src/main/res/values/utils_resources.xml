@@ -38,4 +38,20 @@
     <string name="import_unzip">Import and Unzip File</string>
     <string name="zip_and_export">Zip Files and Export</string>
 
+
+    <!-- font resize -->
+    <style name="rounded_corner_dialog" parent="android:Theme.Dialog">
+        <item name="android:windowBackground">
+            @drawable/rounded_border
+        </item>
+    </style>
+    <!-- For select font size. -->
+    <string name="sample_text">The quick brown fox\nよろしく！</string>
+    <string name="select_font_size">Select font size</string>
+    <string name="select">Select</string>
+    <string name="cancel">Cancel</string>
+
+    <color name="file_edit_window_bg">#FFFFFF</color>
+    <color name="file_edit_window_font_color">#FF000000</color>
+
 </resources>
