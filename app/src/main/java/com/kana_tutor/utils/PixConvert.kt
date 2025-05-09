@@ -25,6 +25,7 @@ fun Float.dpToPx(): Float {
         TypedValue.COMPLEX_UNIT_DIP,
         this, KvgViewer.appContext.resources.displayMetrics)
 }
+fun Int.dpToPix(): Int = this.toFloat().dpToPx().toInt()
 
 fun Float.pxToDp(): Float {
     return TypedValueCompat.deriveDimension(
@@ -37,6 +38,8 @@ fun Float.spToPx(): Float {
         TypedValue.COMPLEX_UNIT_SP,
         this, KvgViewer.appContext.resources.displayMetrics)
 }
+fun Int.spToPix(): Int = this.toFloat().spToPx().toInt()
+
 
 fun Float.pxToSp(): Float {
     return TypedValueCompat.deriveDimension(

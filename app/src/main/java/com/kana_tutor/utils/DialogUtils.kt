@@ -128,7 +128,7 @@ fun Context.toastPlus(
 ) {
     val ssMess = SpannableString(mess)
     ssMess.setSpan(
-        AbsoluteSizeSpan(spToPix(fontSize)),
+        AbsoluteSizeSpan(fontSize.spToPix()),
         0, ssMess.length, 0
     )
     if (color != null)
