@@ -18,7 +18,6 @@ package com.kana_tutor.utils
 import android.app.Activity
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.content.res.Resources
 import android.os.Build
 import android.util.TypedValue
 import android.widget.TextView
@@ -27,12 +26,6 @@ import com.kana_tutor.kvgviewer.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import com.kana_tutor.kvgviewer.R
-
-fun dpToPix(dp: Int): Int =
-    (dp * Resources.getSystem().displayMetrics.density).toInt()
-@Suppress("unused", "DEPRECATION")
-fun spToPix(sp: Int): Int =
-    (sp * Resources.getSystem().displayMetrics.scaledDensity).toInt()
 
 fun Activity.displayBuildInfo() : Boolean {
     val appInfo: ApplicationInfo =
@@ -71,7 +64,7 @@ fun Activity.displayBuildInfo() : Boolean {
     val tv = TextView(this)
     with(tv) {
         text = buildInfoStr
-        val dp10 = dpToPix(10)
+        val dp10 = 10F.dpToPx().toInt()
         setPadding(dp10, dp10, dp10, dp10)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
         setTextIsSelectable(true)
