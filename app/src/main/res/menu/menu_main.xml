@@ -4,37 +4,37 @@
     tools:context="com.kana_tutor.app_template.MainActivity">
     <item
     android:id="@+id/select_display_theme"
-    android:orderInCategory="4"
+    android:orderInCategory="10"
     android:title=""
     android:checkable="false"
     app:showAsAction="never" >
-    <menu>
-        <group
-            android:id="@+id/select_ignore_buckets_group"
-            android:checkableBehavior="single">
-            <item
-                android:id="@+id/display_dark_theme"
-                android:title="@string/display_theme_dark"/>
-            <item
-                android:id="@+id/display_light_theme"
-                android:title="@string/display_theme_light"/>
-        </group>
-    </menu>
-</item>
+        <menu>
+            <group
+                android:id="@+id/select_ignore_buckets_group"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/display_dark_theme"
+                    android:title="@string/display_theme_dark"/>
+                <item
+                    android:id="@+id/display_light_theme"
+                    android:title="@string/display_theme_light"/>
+            </group>
+        </menu>
+    </item>
     <item
         android:id="@+id/select_font_size"
-        android:orderInCategory="99"
+        android:orderInCategory="20"
         android:title="@string/select_font_size"
         app:showAsAction="never"
         />
     <item
         android:id="@+id/about_app"
-        android:orderInCategory="5"
+        android:orderInCategory="30"
         android:title="@string/about_app"
         app:showAsAction="never" />
     <item
         android:id="@+id/build_info_item"
-        android:orderInCategory="5"
+        android:orderInCategory="90"
         android:title="@string/build_info"
         app:showAsAction="never" />
 

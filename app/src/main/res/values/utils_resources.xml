@@ -29,24 +29,8 @@
     <string name="select_str">Select</string>
     <string name="cancel_str">Cancel</string>
 
-    <!-- import/export menu -->
-    <string name="external_file_operations">Import/Export Files</string>
-    <string name="export_local">Export</string>
-    <string name="import_external">Import</string>
-    <string name="zip_file">Zip File</string>
-    <string name="a_file">File</string>
-    <string name="import_unzip">Import and Unzip File</string>
-    <string name="zip_and_export">Zip Files and Export</string>
-
-
-    <!-- font resize -->
-    <style name="rounded_corner_dialog" parent="android:Theme.Dialog">
-        <item name="android:windowBackground">
-            @drawable/rounded_border
-        </item>
-    </style>
     <!-- For select font size. -->
-    <string name="sample_text">The quick brown fox\nよろしく！</string>
+    <string name="sample_text">素早い茶色のキツネ</string>
     <string name="select_font_size">Select font size</string>
     <string name="select">Select</string>
     <string name="cancel">Cancel</string>

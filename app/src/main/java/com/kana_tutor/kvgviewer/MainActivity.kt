@@ -33,6 +33,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.View.OnClickListener
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -140,11 +141,11 @@ class MainActivity : AppCompatActivity() {
         fun update(newStuff: Set<String>) =
             update(newStuff.joinToString(""))
         // unit = dp
-        var buttonTextSize: Float = userPreferences.getFloat("buttonTextSize", 25.0f)
+        var buttonTextSizeSP: Int = userPreferences.getInt("buttonTextSize", 25)
             set(newVal) {
-                userPreferences.edit().putFloat("buttonTextSize", newVal).apply()
-                notifyDataSetChanged()
+                userPreferences.edit().putInt("buttonTextSize", newVal).apply()
                 field = newVal
+                notifyDataSetChanged()
             }
         private fun Context.avgSelect(selectableAvg: List<String>, animator: (String)->Unit) {
             if (selectableAvg.size > 1) {
@@ -209,12 +210,16 @@ class MainActivity : AppCompatActivity() {
                 this.text = text
                 setTextColor(text.toButtonColor())
                 setTypeface(notoSansBold, Typeface.BOLD)
-                textSize = buttonTextSize
+                textSize = buttonTextSizeSP.toFloat()
                 setBackgroundResource(
                     R.drawable.border_bg
                 )
                 setPadding(1,1,1,1)
-                setTypeface(notoSansBold, Typeface.BOLD)
+                setTypeface(notoSansBold, Typeface.NORMAL)
+                /*
+                layoutParams = LayoutParams(
+                    LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                 */
                 setOnClickListener(OnClickListener { v ->
                     val text = (v as Button).text
                     Log.d(TAG, "onClick:$text")
@@ -239,6 +244,9 @@ class MainActivity : AppCompatActivity() {
             position: Int, convertView: View?, parent: ViewGroup?
         ): View {
             var button = convertView as Button?
+            // if button resized, make a new one.
+            if (button != null && button.textSize.pxToSp().toInt() != buttonTextSizeSP)
+                button = null
             if (button == null) {
                 button = parent!!.newButton(
                     getItem(position), position
@@ -246,10 +254,12 @@ class MainActivity : AppCompatActivity() {
             }
             else if (button.text != getItem(position)
                     || button.tag != position
-                    || button.textSize != buttonTextSize
                 ) {
+                // RE: textSize, it makes absolutely no sense but when
+                //     you set button size it should be SP but get textSize
+                //     returns pixels.
                 button.text = getItem(position)
-                button.textSize = buttonTextSize
+                button.textSize = buttonTextSizeSP.toFloat()
                 button.setTextColor(
                     button.text.toButtonColor())
                 button.tag = position
@@ -401,11 +411,12 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.select_font_size -> {
-                val newSp = selectTypeSize(
-                    gridAdapter.buttonTextSize.pxToSp().toInt(),
-                    -4..4 // allowed sp range
-                )
-                Log.d(TAG, "New font size: $newSp")
+                selectTypeSize(gridAdapter.buttonTextSizeSP,
+                    15,35,
+                ) { newSp ->
+                    Log.d(TAG, "New font size: $newSp")
+                    gridAdapter.buttonTextSizeSP = newSp
+                }
             /*
                 fontChangeListener = {fontSize: Int ->
                     gridAdapter.buttonTextSize
