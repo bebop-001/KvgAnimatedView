@@ -69,7 +69,9 @@ fun Activity.selectTypeSize(
         dialog.cancel()
     }
     selectBtn.setOnClickListener {
-        updateSP.invoke(sampleText.textSize.pxToSp().toInt())
+        val newSize = sampleText.textSize.pxToSp().toInt()
+        if (newSize != initialSP)
+            updateSP.invoke(newSize)
         dialog.cancel()
     }
 }
