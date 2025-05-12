@@ -34,6 +34,12 @@ android {
 
     }
     signingConfigs {
+        release {
+            storeFile file("keystore.jks")
+            storePassword System.getenv("RELEASE_SIGNING_PASSWORD")
+            keyPassword System.getenv("RELEASE_SIGNING_PASSWORD")
+            keyAlias System.getenv("RELEASE_SIGNING_ALIAS")
+        }
         debug {
             storeFile file("${rootDir}/keystores/debug.keystore")
             keyAlias 'androiddebugkey'
